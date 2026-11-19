@@ -2,6 +2,7 @@
 
 import ThemeSelector from "@/components/ThemeSelector";
 import TransactionsPage from "@/components/TransactionsPage";
+import ContactsPage from "@/components/ContactsPage";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -475,6 +476,8 @@ export default function Home() {
               </>
             ) : activePage === "Transactions" ? (
   <TransactionsPage />
+) : activePage === "Contacts" ? (
+  <ContactsPage />
 ) : activePage === "Settings" || activePage === "Configurações" ? (
   <ThemeSelector />
 ) : (
