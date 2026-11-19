@@ -1,7 +1,7 @@
 "use client";
 
 import ThemeSelector from "@/components/ThemeSelector";
-
+import TransactionsPage from "@/components/TransactionsPage";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -473,9 +473,11 @@ export default function Home() {
                   </div>
                 </section>
               </>
-            ) : activePage === "Settings" || activePage === "Configurações" ? (
-              <ThemeSelector />
-            ) : (
+            ) : activePage === "Transactions" ? (
+  <TransactionsPage />
+) : activePage === "Settings" || activePage === "Configurações" ? (
+  <ThemeSelector />
+) : (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-10">
                 <p className="mb-2 text-sm text-[var(--primary)]">
                   WJRFIN Workspace
