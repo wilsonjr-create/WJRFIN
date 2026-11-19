@@ -1,0 +1,101 @@
+
+@import "tailwindcss";
+
+
+@import "tailwindcss";
+
+/* WJRFIN — Design System */
+
+:root,
+[data-theme="champagne"] {
+  --background: #F8F6F2;
+  --surface: #FFFFFF;
+  --sidebar: #FCFBF9;
+  --primary: #B48B4E;
+  --primary-hover: #94703F;
+  --primary-soft: #F1E8DC;
+  --text-primary: #29251F;
+  --text-secondary: #887B6C;
+  --border: #EBE5DC;
+  --chart-primary: #C6A16A;
+  --chart-secondary: #EADCC8;
+}
+
+[data-theme="emerald"] {
+  --background: #F3F8F5;
+  --surface: #FFFFFF;
+  --sidebar: #F8FBF9;
+  --primary: #287A60;
+  --primary-hover: #1E604B;
+  --primary-soft: #DCECE3;
+  --text-primary: #203A30;
+  --text-secondary: #668174;
+  --border: #DCE8E0;
+  --chart-primary: #399B78;
+  --chart-secondary: #B9DDCB;
+}
+
+[data-theme="midnight"] {
+  --background: #15191F;
+  --surface: #20262E;
+  --sidebar: #191E25;
+
+  --primary: #C8A76B;
+  --primary-hover: #D8B981;
+  --primary-soft: #34312C;
+  --text-primary: #F6F4F0;
+  --text-secondary: #A9A6A1;
+  --border: #353B43;
+  --chart-primary: #C8A76B;
+  --chart-secondary: #93816A;
+}
+
+[data-theme="ocean"] {
+  --background: #F3F7FB;
+  --surface: #FFFFFF;
+  --sidebar: #F8FAFD;
+  --primary: #4179AD;
+  --primary-hover: #305F8B;
+  --primary-soft: #DDEAF5;
+  --text-primary: #263A50;
+  --text-secondary: #71869B;
+  --border: #DCE6F0;
+  --chart-primary: #5797CE;
+  --chart-secondary: #C1D9ED;
+}
+
+[data-theme="rose"] {
+  --background: #FBF6F4;
+  --surface: #FFFFFF;
+  --sidebar: #FDF9F7;
+  --primary: #B98279;
+  --primary-hover: #98675F;
+  --primary-soft: #F0E1DC;
+  --text-primary: #493632;
+  --text-secondary: #947C76;
+  --border: #EBDDD8;
+  --chart-primary: #C68F84;
+  --chart-secondary: #E9CBC4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-surface: var(--surface);
+  --color-primary: var(--primary);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+}
