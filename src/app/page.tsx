@@ -3,7 +3,8 @@
 import ThemeSelector from "@/components/ThemeSelector";
 import TransactionsPage from "@/components/TransactionsPage";
 import ContactsPage from "@/components/ContactsPage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -133,6 +134,70 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [companyName, setCompanyName] = useState("Loading...");
+  const [companyError, setCompanyError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCompany() {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (cancelled) return;
+
+      if (authError || !user) {
+        setCompanyError("Please sign in to access your company.");
+        setCompanyName("Company unavailable");
+        return;
+      }
+
+      const { data: membership, error: membershipError } =
+        await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle();
+
+      if (cancelled) return;
+
+      if (membershipError || !membership) {
+        setCompanyError("No company found for this account.");
+        setCompanyName("Company unavailable");
+        return;
+      }
+
+      const { data: company, error: companyFetchError } =
+        await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", membership.company_id)
+          .single();
+
+      if (cancelled) return;
+
+      if (companyFetchError || !company) {
+        setCompanyError("Unable to load company information.");
+        setCompanyName("Company unavailable");
+        return;
+      }
+
+      setCompanyName(company.name);
+      setCompanyError("");
+    }
+
+    void loadCompany();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filteredTransactions = transactions.filter((transaction) =>
     `${transaction.description} ${transaction.category}`
       .toLowerCase()
@@ -257,9 +322,14 @@ export default function Home() {
                       Good morning,
                     </p>
                     <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                      Your Company{" "}
-                      <span className="text-[var(--primary)]">✦</span>
+                      {companyName}{" "}
+<span className="text-[var(--primary)]">✦</span> 
                     </h2>
+                    {companyError && (
+  <p className="mt-2 text-sm text-red-500" role="alert">
+    {companyError}
+  </p>
+)}
                     <p className="mt-2 text-xs text-[var(--text-secondary)]">
                       Demo dashboard · Sample financial data
                     </p>
