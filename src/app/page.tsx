@@ -137,7 +137,7 @@ export default function Home() {
 
   const [companyName, setCompanyName] = useState("Loading...");
   const [companyError, setCompanyError] = useState("");
-
+  const [companyId, setCompanyId] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
 
@@ -151,11 +151,14 @@ export default function Home() {
 
       if (cancelled) return;
 
-      if (authError || !user) {
-        setCompanyError("Please sign in to access your company.");
-        setCompanyName("Company unavailable");
-        return;
-      }
+
+if (authError || !user) {
+  setCompanyId(null);
+  setCompanyError("Please sign in to access your company.");
+  setCompanyName("Company unavailable");
+  return;
+}
+
 
       const { data: membership, error: membershipError } =
         await supabase
@@ -167,11 +170,12 @@ export default function Home() {
 
       if (cancelled) return;
 
-      if (membershipError || !membership) {
-        setCompanyError("No company found for this account.");
-        setCompanyName("Company unavailable");
-        return;
-      }
+     if (membershipError || !membership) {
+  setCompanyId(null);
+  setCompanyError("No company found for this account.");
+  setCompanyName("Company unavailable");
+  return;
+}
 
       const { data: company, error: companyFetchError } =
         await supabase
@@ -182,14 +186,16 @@ export default function Home() {
 
       if (cancelled) return;
 
-      if (companyFetchError || !company) {
-        setCompanyError("Unable to load company information.");
-        setCompanyName("Company unavailable");
-        return;
-      }
+     if (companyFetchError || !company) {
+  setCompanyId(null);
+  setCompanyError("Unable to load company information.");
+  setCompanyName("Company unavailable");
+  return;
+}
 
-      setCompanyName(company.name);
-      setCompanyError("");
+     setCompanyId(membership.company_id);
+setCompanyName(company.name);
+setCompanyError("");
     }
 
     void loadCompany();
@@ -551,7 +557,7 @@ export default function Home() {
                 </section>
               </>
             ) : activePage === "Transactions" ? (
-  <TransactionsPage />
+  <TransactionsPage companyId={companyId} />
 ) : activePage === "Contacts" ? (
   <ContactsPage />
 ) : activePage === "Settings" || activePage === "Configurações" ? (

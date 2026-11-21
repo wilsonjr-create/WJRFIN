@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -89,10 +90,17 @@ function createId() {
   return crypto.randomUUID();
 }
 
-export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loaded, setLoaded] = useState(false);
 
+export default function TransactionsPage({
+  companyId,
+}: {
+  companyId: string | null;
+}) {
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [transactionsError, setTransactionsError] = useState("");
+  const [savingTransaction, setSavingTransaction] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
 
@@ -105,36 +113,63 @@ export default function TransactionsPage() {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("2026-11-19");
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+async function fetchCompanyTransactions() {
+  if (!companyId) {
+    setTransactionsError("Company not available.");
+    return;
+  }
 
-      if (saved !== null) {
-        const parsed = JSON.parse(saved);
+  setLoadingTransactions(true);
+  setTransactionsError("");
 
-        if (Array.isArray(parsed)) {
-          setTransactions(parsed);
-        } else {
-          setTransactions(demoTransactions);
-        }
-      } else {
-        setTransactions(demoTransactions);
-      }
-    } catch {
-      setTransactions(demoTransactions);
+  try {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, description, category, type, amount, date")
+      .eq("company_id", companyId)
+      .order("date", { ascending: false });
+
+    if (error) {
+      throw error;
     }
 
-    setLoaded(true);
-  }, []);
+    
+const companyTransactions: Transaction[] = (data ?? []).map(
+  (item) => ({
+    id: item.id,
+    description: item.description,
+    category: item.category,
+    type: item.type as TransactionType,
+    amount: Number(item.amount),
+    date: item.date,
+  })
+);
 
-  useEffect(() => {
-    if (!loaded) return;
+setTransactions(companyTransactions);
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(transactions)
+  } catch (error) {
+    setTransactionsError(
+      error instanceof Error
+        ? error.message
+        : "Unable to load transactions."
     );
-  }, [transactions, loaded]);
+    throw error;
+  } finally {
+    setLoadingTransactions(false);
+  }
+}
+
+useEffect(() => {
+  if (!companyId) return;
+
+  void fetchCompanyTransactions();
+
+  // Teste inicial da conexão com o Supabase.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [companyId]);
+
 
   const totals = useMemo(() => {
     const income = transactions
@@ -188,22 +223,48 @@ export default function TransactionsPage() {
     setModalOpen(true);
   }
 
-  function saveTransaction(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  
+async function saveTransaction(
+  event: React.FormEvent<HTMLFormElement>
+) {
+  event.preventDefault();
 
-    const numericAmount = Number(amount);
+  if (savingTransaction) return;
 
-    if (
-      !description.trim() ||
-      !Number.isFinite(numericAmount) ||
-      numericAmount <= 0 ||
-      !date
-    ) {
-      return;
+  setTransactionsError("");
+
+  if (!companyId) {
+    setTransactionsError("Company not available.");
+    return;
+  }
+
+  const numericAmount = Number(amount);
+
+  if (
+    !description.trim() ||
+    !Number.isFinite(numericAmount) ||
+    numericAmount <= 0 ||
+    !date
+  ) {
+    setTransactionsError("Please enter valid transaction details.");
+    return;
+  }
+
+  setSavingTransaction(true);
+
+  try {
+    const supabase = createClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      throw new Error("Please sign in to save transactions.");
     }
 
-    const item: Transaction = {
-      id: editingId ?? createId(),
+    const values = {
       description: description.trim(),
       category,
       type,
@@ -212,18 +273,42 @@ export default function TransactionsPage() {
     };
 
     if (editingId) {
-      setTransactions((current) =>
-        current.map((transaction) =>
-          transaction.id === editingId ? item : transaction
-        )
-      );
+      const { data, error } = await supabase
+        .from("transactions")
+        .update(values)
+        .eq("id", editingId)
+        .eq("company_id", companyId)
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error("Transaction not updated.");
     } else {
-      setTransactions((current) => [item, ...current]);
+      const { error } = await supabase
+        .from("transactions")
+        .insert({
+          ...values,
+          company_id: companyId,
+          user_id: user.id,
+        });
+
+      if (error) throw error;
     }
+
+    await fetchCompanyTransactions();
 
     setModalOpen(false);
     setEditingId(null);
+  } catch (error) {
+    setTransactionsError(
+      error instanceof Error
+        ? error.message
+        : "Unable to save transaction."
+    );
+  } finally {
+    setSavingTransaction(false);
   }
+}
 
   function deleteTransaction(id: string) {
     const confirmed = window.confirm(
@@ -573,6 +658,7 @@ export default function TransactionsPage() {
 
                 <button
                   type="submit"
+                  disabled={savingTransaction}
                   className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                 >
                   {editingId ? "Save Changes" : "Save Transaction"}
