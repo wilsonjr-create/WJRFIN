@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { savePendingCompanyLogo } from "@/lib/pending-company-logo";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,7 +41,22 @@ const [success, setSuccess] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [companyLogo, setCompanyLogo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+useEffect(() => {
+  if (!companyLogo) {
+    setLogoPreview(null);
+    return;
+  }
+
+  const url = URL.createObjectURL(companyLogo);
+  setLogoPreview(url);
+
+  return () => {
+    URL.revokeObjectURL(url);
+  };
+}, [companyLogo]);
   const canContinue =
     step === 1
       ? company.trim().length >= 2
@@ -103,7 +119,9 @@ async function handleCreateWorkspace() {
       setError(signupError.message);
       return;
     }
-
+if (companyLogo && data.user) {
+  await savePendingCompanyLogo(data.user.id, companyLogo);
+}
     if (!data.session) {
       setSuccess(
         "Check your email to confirm your account. Sign in afterward to finish setting up your company."
@@ -178,13 +196,60 @@ async function handleCreateWorkspace() {
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Industry
-                </label>
-                <select
-                  className={inputClass}
-                  value={industry}
+
+                <div>
+  <label className="mb-2 block text-sm font-medium">
+    Company Logo (Optional)
+  </label>
+
+  <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background)] p-5">
+    <div className="flex items-center gap-4">
+{logoPreview ? (
+  <img
+    src={logoPreview}
+    alt="Company logo preview"
+    className="h-16 w-16 rounded-xl object-contain"
+  />
+      ) : (
+        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[var(--surface)]">
+          <Building2 size={28} className="text-[var(--primary)]" />
+        </div>
+      )}
+
+      <div className="flex-1">
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--primary)] file:px-3 file:py-2 file:font-medium file:text-white"
+          onChange={(event) => {
+            const file = event.target.files?.[0] ?? null;
+
+            if (file && file.size > 2 * 1024 * 1024) {
+              setError("Logo must be smaller than 2 MB.");
+              event.target.value = "";
+              return;
+            }
+
+            setError("");
+            setCompanyLogo(file);
+          }}
+        />
+
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          PNG, JPG or WebP. Maximum 2 MB.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <label className="mb-2 block text-sm font-medium">
+    Industry
+  </label>
+  <select
+    className={inputClass}
+    value={industry}
                   onChange={(event) => setIndustry(event.target.value)}
                 >
                   {industries.map((item) => (

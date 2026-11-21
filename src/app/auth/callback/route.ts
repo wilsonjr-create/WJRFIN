@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
   }
 
   response = NextResponse.redirect(
-    new URL("/", url.origin)
-  );
+  new URL("/login?confirmed=true", url.origin)
+);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

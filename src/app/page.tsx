@@ -136,6 +136,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
 
   const [companyName, setCompanyName] = useState("Loading...");
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState("");
   const [companyId, setCompanyId] = useState<string | null>(null);
   useEffect(() => {
@@ -180,7 +181,7 @@ if (authError || !user) {
       const { data: company, error: companyFetchError } =
         await supabase
           .from("companies")
-          .select("name")
+          .select("name, logo_path")
           .eq("id", membership.company_id)
           .single();
 
@@ -192,7 +193,20 @@ if (authError || !user) {
   setCompanyName("Company unavailable");
   return;
 }
+if (company.logo_path) {
+  const { data: logoData, error: logoError } =
+    await supabase.storage
+      .from("company-logos")
+      .createSignedUrl(company.logo_path, 60 * 60);
 
+  if (cancelled) return;
+
+  setCompanyLogoUrl(
+    logoError ? null : logoData?.signedUrl ?? null
+  );
+} else {
+  setCompanyLogoUrl(null);
+}
      setCompanyId(membership.company_id);
 setCompanyName(company.name);
 setCompanyError("");
@@ -229,15 +243,37 @@ setCompanyError("");
           }`}
         >
           <div className="mb-12 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight">
-                WJR<span className="text-[var(--primary)]">FIN</span>
-              </h1>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
-                Business Finance
-              </p>
-            </div>
+           <div className="flex min-h-12 items-center">
+ {companyLogoUrl ? (
+  <div className="flex items-center gap-3">
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#B48B4E]/50 bg-[#22262D] p-1.5 shadow-sm">
+      <img
+        src={companyLogoUrl}
+        alt={`${companyName} logo`}
+        className="h-full w-full rounded-xl object-contain"
+      />
+    </div>
 
+    <div className="min-w-0">
+      <p className="truncate text-sm font-semibold tracking-wide text-[var(--text-primary)]">
+        {companyName}
+      </p>
+      <p className="text-[9px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">
+        Business Workspace
+      </p>
+    </div>
+  </div>
+  ) : (
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-tight">
+        WJR<span className="text-[var(--primary)]">FIN</span>
+      </h1>
+      <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
+        Business Finance
+      </p>
+    </div>
+  )}
+</div>
             <button
               className="lg:hidden"
               onClick={() => setSidebarOpen(false)}

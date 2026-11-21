@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
+  getPendingCompanyLogo,
+  clearPendingCompanyLogo,
+} from "@/lib/pending-company-logo";
+import {
   ArrowRight,
   Eye,
   EyeOff,
@@ -55,7 +59,60 @@ if (!onboardingResponse.ok) {
   );
   return;
 }
+const {
+  data: { user },
+} = await supabase.auth.getUser();
 
+const companyId = onboardingResult.companyId;
+
+if (user && companyId) {
+  const pendingLogo = await getPendingCompanyLogo(user.id);
+
+ if (pendingLogo) {
+  const extension = pendingLogo.name
+    .split(".")
+    .pop()
+    ?.toLowerCase();
+
+  const allowedExtensions = ["png", "jpg", "jpeg", "webp"];
+
+  if (
+    !extension ||
+    !allowedExtensions.includes(extension) ||
+    !["image/png", "image/jpeg", "image/webp"].includes(pendingLogo.type) ||
+    pendingLogo.size > 2 * 1024 * 1024
+  ) {
+    setError("Invalid company logo. Please use PNG, JPG or WebP up to 2 MB.");
+    return;
+  }
+
+  const logoPath = `${companyId}/logo-${crypto.randomUUID()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("company-logos")
+    .upload(logoPath, pendingLogo, {
+      contentType: pendingLogo.type,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    setError(`Unable to upload company logo: ${uploadError.message}`);
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from("companies")
+    .update({ logo_path: logoPath })
+    .eq("id", companyId);
+
+  if (updateError) {
+    setError(`Unable to save company logo: ${updateError.message}`);
+    return;
+  }
+
+  await clearPendingCompanyLogo(user.id);
+}
+}
 router.replace("/");
 router.refresh();
 
