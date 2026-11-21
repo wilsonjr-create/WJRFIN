@@ -5,6 +5,7 @@ import TransactionsPage from "@/components/TransactionsPage";
 import ContactsPage from "@/components/ContactsPage";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import CurrencyTicker from "@/components/CurrencyTicker";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -295,6 +296,7 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-4">
+            
               <div className="hidden items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 md:flex">
                 <Search size={16} className="text-[var(--text-secondary)]" />
                 <input
@@ -319,8 +321,8 @@ export default function Home() {
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <p className="mb-1 text-sm text-[var(--text-secondary)]">
-                      Good morning,
-                    </p>
+  Hello,
+</p>
                     <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
                       {companyName}{" "}
 <span className="text-[var(--primary)]">✦</span> 
@@ -335,11 +337,15 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs">
-                    <CalendarDays size={16} className="text-[var(--primary)]" />
-                    Jan – Jun 2025
-                    <ChevronDown size={15} />
-                  </div>
+                 <div className="flex flex-wrap items-center justify-end gap-6">
+  <CurrencyTicker />
+
+  <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs">
+    <CalendarDays size={16} className="text-[var(--primary)]" />
+    Jan – Jun 2025
+    <ChevronDown size={15} />
+  </div>
+</div>
                 </div>
 
                 {/* Financial metrics */}
