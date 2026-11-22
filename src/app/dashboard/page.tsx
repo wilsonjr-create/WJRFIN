@@ -1,5 +1,7 @@
 "use client";
 import { translate } from "@/lib/i18n";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import ThemeSelector from "@/components/ThemeSelector";
 import CompanyLogoSettings from "@/components/CompanyLogoSettings";
@@ -112,6 +114,7 @@ const navigation = [
   date: string;
 };
 export default function Home() {
+  const router = useRouter();
   const { language } = useLanguage();
   const t = (key: string) => translate(language, key);
   const [activePage, setActivePage] = useState("Dashboard");
@@ -430,7 +433,10 @@ const realMetrics = [
  {companyLogoUrl ? (
   <div className="flex items-center gap-3">
     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#B48B4E]/50 bg-[#22262D] p-1.5 shadow-sm">
-      <img
+      <Image
+        unoptimized
+        width={56}
+        height={56}
         src={companyLogoUrl}
         alt={`${companyName} logo`}
         className="h-full w-full rounded-xl object-contain"
@@ -573,7 +579,8 @@ const realMetrics = [
                           setLogoutError("");
                           const { error } = await createClient().auth.signOut();
                           if (error) { setLogoutError(profileLabels.error); setSigningOut(false); return; }
-                          window.location.assign("/login");
+                          router.replace("/login");
+                          router.refresh();
                         }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-[var(--primary-soft)] disabled:opacity-50">
                           <LogOut size={17} />{profileLabels.logout}
                         </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { savePendingCompanyLogo } from "@/lib/pending-company-logo";
 import {
@@ -205,7 +206,10 @@ if (companyLogo && data.user) {
   <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background)] p-5">
     <div className="flex items-center gap-4">
 {logoPreview ? (
-  <img
+  <Image
+    unoptimized
+    width={64}
+    height={64}
     src={logoPreview}
     alt="Company logo preview"
     className="h-16 w-16 rounded-xl object-contain"

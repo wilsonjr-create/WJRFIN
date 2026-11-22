@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { ImagePlus, Trash2, Building2, LoaderCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -87,7 +88,7 @@ export default function CompanyLogoSettings({ companyId, logoPath, logoUrl, isOw
       </div>
       <div className="flex flex-wrap items-center gap-5">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--sidebar)] p-2">
-          {logoUrl ? <img src={logoUrl} alt={t.title} className="h-full w-full object-contain" /> : <Building2 size={32} className="text-[var(--text-secondary)]" />}
+          {logoUrl ? <Image unoptimized width={96} height={96} src={logoUrl} alt={t.title} className="h-full w-full object-contain" /> : <Building2 size={32} className="text-[var(--text-secondary)]" />}
         </div>
         <div className="space-y-3">
           <p className="text-xs text-[var(--text-secondary)]">{t.help}</p>
