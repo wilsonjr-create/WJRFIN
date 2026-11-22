@@ -2,6 +2,7 @@
 import { translate } from "@/lib/i18n";
 
 import ThemeSelector from "@/components/ThemeSelector";
+import CompanyLogoSettings from "@/components/CompanyLogoSettings";
 import TransactionsPage from "@/components/TransactionsPage";
 import ContactsPage from "@/components/ContactsPage";
 import CashFlowPage from "@/components/CashFlowPage";
@@ -125,6 +126,8 @@ export default function Home() {
 
   const [companyName, setCompanyName] = useState("Loading...");
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
+  const [companyLogoPath, setCompanyLogoPath] = useState<string | null>(null);
+  const [isCompanyOwner, setIsCompanyOwner] = useState(false);
   const [companyError, setCompanyError] = useState("");
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyCurrency, setCompanyCurrency] = useState("USD");
@@ -167,7 +170,7 @@ if (authError || !user) {
       const { data: membership, error: membershipError } =
         await supabase
           .from("company_members")
-          .select("company_id")
+          .select("company_id, role")
           .eq("user_id", user.id)
           .limit(1)
           .maybeSingle();
@@ -176,6 +179,7 @@ if (authError || !user) {
 
      if (membershipError || !membership) {
   setCompanyId(null);
+  setIsCompanyOwner(false);
   setCompanyError("No company found for this account.");
   setCompanyName("Company unavailable");
   return;
@@ -196,6 +200,8 @@ if (authError || !user) {
   setCompanyName("Company unavailable");
   return;
 }
+setCompanyLogoPath(company.logo_path ?? null);
+setIsCompanyOwner(String(membership.role).toLowerCase() === "owner");
 if (company.logo_path) {
   const { data: logoData, error: logoError } =
     await supabase.storage
@@ -864,7 +870,10 @@ const realMetrics = [
 ) : activePage === "Contacts" ? (
   <ContactsPage companyId={companyId} />
 ) : activePage === "Settings" || activePage === "Configurações" ? (
-  <ThemeSelector />
+  <div className="space-y-6">
+    <CompanyLogoSettings companyId={companyId} logoPath={companyLogoPath} logoUrl={companyLogoUrl} isOwner={isCompanyOwner} onLogoChange={(path, url) => { setCompanyLogoPath(path); setCompanyLogoUrl(url); }} />
+    <ThemeSelector />
+  </div>
 ) : (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-10">
                 <p className="mb-2 text-sm text-[var(--primary)]">
