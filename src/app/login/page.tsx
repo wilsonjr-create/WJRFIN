@@ -113,7 +113,7 @@ if (user && companyId) {
   await clearPendingCompanyLogo(user.id);
 }
 }
-router.replace("/");
+router.replace("/dashboard");
 router.refresh();
 
     } catch {

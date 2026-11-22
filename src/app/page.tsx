@@ -1,623 +1,395 @@
 "use client";
 
-import ThemeSelector from "@/components/ThemeSelector";
-import TransactionsPage from "@/components/TransactionsPage";
-import ContactsPage from "@/components/ContactsPage";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import CurrencyTicker from "@/components/CurrencyTicker";
+import { useState } from "react";
+import Link from "next/link";
 import {
-  LayoutDashboard,
-  ArrowLeftRight,
-  ChartNoAxesCombined,
-  ReceiptText,
-  Users,
-  ChartPie,
-  Settings,
-  Search,
-  Bell,
+  ArrowRight,
+  Check,
   ChevronDown,
-  CalendarDays,
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
-  Crown,
+  Globe2,
   Menu,
   X,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
 
-const navigation = [
-  { name: "Dashboard", icon: LayoutDashboard },
-  { name: "Transactions", icon: ArrowLeftRight },
-  { name: "Cash Flow", icon: ChartNoAxesCombined },
-  { name: "Bills", icon: ReceiptText },
-  { name: "Contacts", icon: Users },
-  { name: "Reports", icon: ChartPie },
-  { name: "Settings", icon: Settings },
+type Language = "en" | "es" | "pt-BR" | "pt-PT";
+
+const languages: {
+  code: Language;
+  flag: string;
+  label: string;
+}[] = [
+  { code: "en", flag: "🇬🇧", label: "English" },
+  { code: "es", flag: "🇪🇸", label: "Español" },
+  { code: "pt-BR", flag: "🇧🇷", label: "Português BR" },
+  { code: "pt-PT", flag: "🇵🇹", label: "Português PT" },
 ];
 
-const cashFlow = [
-  { month: "Jan", revenue: 55000, expenses: 39000 },
-  { month: "Feb", revenue: 68000, expenses: 45000 },
-  { month: "Mar", revenue: 78000, expenses: 51000 },
-  { month: "Apr", revenue: 85000, expenses: 58000 },
-  { month: "May", revenue: 96000, expenses: 68000 },
-  { month: "Jun", revenue: 112000, expenses: 75000 },
-];
+const translations = {
+  en: {
+    home: "Home",
+    features: "Features",
+    solutions: "Solutions",
+    pricing: "Pricing",
+    about: "About",
+    signIn: "Sign In",
+    start: "Start Managing",
+    eyebrow: "BUSINESS FINANCE, SIMPLIFIED",
+    headline: ["Your business.", "Your numbers.", "Your control."],
+    description:
+      "Manage income, expenses, cash flow and business performance in one intelligent workspace.",
+    benefits: ["Fast Setup", "Secure & Reliable", "Built for Businesses"],
+  
+  
 
-const transactions = [
-  {
-    date: "Jun 20, 2025",
-    description: "Client Payment – Acme Ltd.",
-    category: "Sales",
-    type: "Income",
-    amount: 12500,
+mobile: {
+  eyebrow: "WORK ANYWHERE",
+  title: "Full control of your business,",
+  highlight: "anytime, anywhere.",
+  description: "A secure and flexible platform to manage your company's finances from the office, at home or on the go.",
+  features: [
+    { title: "Financial Control", description: "Track income, expenses and balance." },
+    { title: "Business Insights", description: "Clear reports for smarter decisions." },
+    { title: "Built for Growth", description: "A workspace that grows with you." },
+  ],
+},
+},
+
+  es: {
+    home: "Inicio",
+    features: "Funciones",
+    solutions: "Soluciones",
+    pricing: "Precios",
+    about: "Nosotros",
+    signIn: "Iniciar sesión",
+    start: "Empezar a gestionar",
+    eyebrow: "FINANZAS EMPRESARIALES, SIMPLIFICADAS",
+    headline: ["Tu empresa.", "Tus números.", "Tu control."],
+    description:
+      "Gestiona ingresos, gastos, flujo de caja y resultados empresariales en una plataforma inteligente.",
+    benefits: ["Configuración rápida", "Seguro y fiable", "Para empresas"],
+    mobile: {
+  eyebrow: "TRABAJA DESDE CUALQUIER LUGAR",
+  title: "Control total de tu empresa,",
+  highlight: "en cualquier momento y lugar.",
+  description: "Una plataforma segura y flexible para gestionar las finanzas de tu empresa desde la oficina, en casa o desde cualquier lugar.",
+  features: [
+    { title: "Control Financiero", description: "Controla ingresos, gastos y saldos." },
+    { title: "Análisis Empresarial", description: "Informes claros para tomar mejores decisiones." },
+    { title: "Diseñado para Crecer", description: "Una plataforma que crece contigo." },
+  ],
+},
   },
-  {
-    date: "Jun 18, 2025",
-    description: "Office Rent",
-    category: "Facilities",
-    type: "Expense",
-    amount: -4200,
+  "pt-BR": {
+    home: "Início",
+    features: "Funcionalidades",
+    solutions: "Soluções",
+    pricing: "Planos",
+    about: "Sobre",
+    signIn: "Entrar",
+    start: "Começar a gerenciar",
+    eyebrow: "GESTÃO FINANCEIRA EMPRESARIAL SIMPLIFICADA",
+    headline: ["Seu negócio.", "Seus números.", "Seu controle."],
+    description:
+      "Gerencie receitas, despesas, fluxo de caixa e resultados da sua empresa em uma plataforma inteligente.",
+    benefits: ["Configuração rápida", "Seguro e confiável", "Feito para empresas"],
+    mobile: {
+  eyebrow: "TRABALHE DE QUALQUER LUGAR",
+  title: "Controle total do seu negócio,",
+  highlight: "a qualquer hora, em qualquer lugar.",
+  description: "Uma plataforma segura e flexível para gerenciar as finanças da sua empresa no escritório, em casa ou onde estiver.",
+  features: [
+    { title: "Controle Financeiro", description: "Acompanhe receitas, despesas e saldo." },
+    { title: "Análises Empresariais", description: "Relatórios claros para decisões inteligentes." },
+    { title: "Feito para Crescer", description: "Uma plataforma que cresce com seu negócio." },
+  ],
+},
   },
-  {
-    date: "Jun 16, 2025",
-    description: "Marketing Campaign",
-    category: "Marketing",
-    type: "Expense",
-    amount: -2850,
+  "pt-PT": {
+    home: "Início",
+    features: "Funcionalidades",
+    solutions: "Soluções",
+    pricing: "Preços",
+    about: "Sobre",
+    signIn: "Iniciar sessão",
+    start: "Começar a gerir",
+    eyebrow: "GESTÃO FINANCEIRA EMPRESARIAL SIMPLIFICADA",
+    headline: ["A sua empresa.", "Os seus números.", "O seu controlo."],
+    description:
+      "Faça a gestão de receitas, despesas, fluxo de caixa e resultados da sua empresa numa plataforma inteligente.",
+    benefits: ["Configuração rápida", "Seguro e fiável", "Para empresas"],
+    mobile: {
+  eyebrow: "TRABALHE A PARTIR DE QUALQUER LUGAR",
+  title: "Controlo total da sua empresa,",
+  highlight: "a qualquer hora, em qualquer lugar.",
+  description: "Uma plataforma segura e flexível para gerir as finanças da sua empresa no escritório, em casa ou onde estiver.",
+  features: [
+    { title: "Controlo Financeiro", description: "Acompanhe receitas, despesas e saldo." },
+    { title: "Análises Empresariais", description: "Relatórios claros para melhores decisões." },
+    { title: "Preparado para Crescer", description: "Uma plataforma que cresce com a sua empresa." },
+  ],
+},
   },
-  {
-    date: "Jun 14, 2025",
-    description: "Supplier Payment – Global Supply",
-    category: "Supplies",
-    type: "Expense",
-    amount: -6300,
-  },
-  {
-    date: "Jun 12, 2025",
-    description: "Service Revenue – Tech Solutions",
-    category: "Services",
-    type: "Income",
-    amount: 18900,
-  },
-];
+};
 
-const metrics = [
-  {
-    title: "Total Revenue",
-    value: "$124,500.00",
-    change: "+12.4%",
-    positive: true,
-    icon: ArrowUpRight,
-  },
-  {
-    title: "Total Expenses",
-    value: "$72,340.00",
-    change: "-5.8%",
-    positive: true,
-    icon: ArrowDownRight,
-  },
-  {
-    title: "Net Profit",
-    value: "$52,160.00",
-    change: "+28.1%",
-    positive: true,
-    icon: ChartNoAxesCombined,
-  },
-  {
-    title: "Available Balance",
-    value: "$89,750.00",
-    change: null,
-    positive: true,
-    icon: Wallet,
-  },
-];
+export default function HomePage() {
+  const [language, setLanguage] = useState<Language>("en");
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-const money = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
+  const t = translations[language];
+  const currentLanguage = languages.find(
+    (item) => item.code === language
+  )!;
 
-export default function Home() {
-  const [activePage, setActivePage] = useState("Dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const [companyName, setCompanyName] = useState("Loading...");
-  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
-  const [companyError, setCompanyError] = useState("");
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCompany() {
-      const supabase = createClient();
-
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (cancelled) return;
-
-
-if (authError || !user) {
-  setCompanyId(null);
-  setCompanyError("Please sign in to access your company.");
-  setCompanyName("Company unavailable");
-  return;
-}
-
-
-      const { data: membership, error: membershipError } =
-        await supabase
-          .from("company_members")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
-
-      if (cancelled) return;
-
-     if (membershipError || !membership) {
-  setCompanyId(null);
-  setCompanyError("No company found for this account.");
-  setCompanyName("Company unavailable");
-  return;
-}
-
-      const { data: company, error: companyFetchError } =
-        await supabase
-          .from("companies")
-          .select("name, logo_path")
-          .eq("id", membership.company_id)
-          .single();
-
-      if (cancelled) return;
-
-     if (companyFetchError || !company) {
-  setCompanyId(null);
-  setCompanyError("Unable to load company information.");
-  setCompanyName("Company unavailable");
-  return;
-}
-if (company.logo_path) {
-  const { data: logoData, error: logoError } =
-    await supabase.storage
-      .from("company-logos")
-      .createSignedUrl(company.logo_path, 60 * 60);
-
-  if (cancelled) return;
-
-  setCompanyLogoUrl(
-    logoError ? null : logoData?.signedUrl ?? null
-  );
-} else {
-  setCompanyLogoUrl(null);
-}
-     setCompanyId(membership.company_id);
-setCompanyName(company.name);
-setCompanyError("");
-    }
-
-    void loadCompany();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const filteredTransactions = transactions.filter((transaction) =>
-    `${transaction.description} ${transaction.category}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+  const navigation = [
+    { label: t.home, href: "#home" },
+    { label: t.features, href: "#features" },
+    { label: t.solutions, href: "#solutions" },
+    { label: t.pricing, href: "#pricing" },
+    { label: t.about, href: "#about" },
+  ];
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)]">
-      <div className="flex min-h-screen">
-        {/* Mobile overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+    <main className="min-h-screen bg-[#101215] text-[#F7F5F1]">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#15171A]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-6 py-5">
+          <a href="#home" className="shrink-0">
+            <div className="text-2xl font-extrabold tracking-tight">
+              WJR<span className="text-[#D1A765]">FIN</span>
+            </div>
+            <div className="text-[9px] tracking-[0.22em] text-[#D1A765]">
+              BUSINESS FINANCE
+            </div>
+          </a>
 
-        {/* Sidebar */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-65 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] p-6 transition-transform lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="mb-12 flex items-center justify-between">
-           <div className="flex min-h-12 items-center">
- {companyLogoUrl ? (
-  <div className="flex items-center gap-3">
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#B48B4E]/50 bg-[#22262D] p-1.5 shadow-sm">
-      <img
-        src={companyLogoUrl}
-        alt={`${companyName} logo`}
-        className="h-full w-full rounded-xl object-contain"
-      />
-    </div>
-
-    <div className="min-w-0">
-      <p className="truncate text-sm font-semibold tracking-wide text-[var(--text-primary)]">
-        {companyName}
-      </p>
-      <p className="text-[9px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">
-        Business Workspace
-      </p>
-    </div>
-  </div>
-  ) : (
-    <div>
-      <h1 className="text-2xl font-extrabold tracking-tight">
-        WJR<span className="text-[var(--primary)]">FIN</span>
-      </h1>
-      <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
-        Business Finance
-      </p>
-    </div>
-  )}
-</div>
-            <button
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-              aria-label="Close menu"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <nav className="space-y-2">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              const active = activePage === item.name;
-
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    setActivePage(item.name);
-                    setSidebarOpen(false);
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
-                    active
-                      ? "bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
-                      : "text-[var(--text-secondary)] hover:bg-[var(--primary-soft)]"
-                  }`}
-                >
-                  <Icon size={18} strokeWidth={1.8} />
-                  {item.name}
-                </button>
-              );
-            })}
+          <nav className="hidden items-center gap-7 lg:flex">
+            {navigation.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="text-sm text-white/75 transition hover:text-[#D1A765]"
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
 
-          <div className="mt-auto rounded-2xl border border-[var(--border)] bg-[var(--primary-soft)] p-5">
-            <Crown className="mb-3 text-[var(--primary)]" size={25} />
-            <h3 className="font-bold">WJRFIN Pro</h3>
-            <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
-              Unlock advanced financial reports and team management.
-            </p>
-            <button className="mt-4 w-full rounded-xl bg-[var(--primary)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
-              Coming Soon
-            </button>
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <main className="min-w-0 flex-1 lg:ml-65">
-          <header className="flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--sidebar)]/80 px-5 py-5 md:px-9">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
               <button
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Open menu"
+                type="button"
+                onClick={() => setLanguageOpen(!languageOpen)}
+                aria-expanded={languageOpen}
+                aria-label="Select language"
+                className="flex items-center gap-2 rounded-xl border border-[#B48B4E]/40 px-3 py-2 text-sm transition hover:border-[#D1A765]"
               >
-                <Menu size={23} />
+                <span className="text-sm">{currentLanguage.flag}</span>
+                <span>{language.toUpperCase()}</span>
+                <ChevronDown size={14} />
               </button>
 
-              <span className="text-sm text-[var(--text-secondary)]">
-                Business Overview
-              </span>
+              {languageOpen && (
+                <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border border-[#B48B4E]/30 bg-[#1C1E22] p-1 shadow-2xl">
+                  {languages.map((item) => (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(item.code);
+                        setLanguageOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-[#B48B4E]/15"
+                    >
+                      <span className="flex items-center gap-3">
+                        <span className="text-sm">{item.flag}</span>
+                        {item.label}
+                      </span>
+                      {language === item.code && (
+                        <Check size={15} className="text-[#D1A765]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-4">
-            
-              <div className="hidden items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 md:flex">
-                <Search size={16} className="text-[var(--text-secondary)]" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search transactions..."
-                  className="w-48 bg-transparent text-xs outline-none"
-                />
-              </div>
+            <Link
+              href="/login"
+              className="hidden rounded-xl border border-white/25 px-5 py-2.5 text-sm transition hover:border-[#D1A765] sm:inline-flex"
+            >
+              {t.signIn}
+            </Link>
 
-              <Bell size={19} className="text-[var(--text-secondary)]" />
+            <Link
+              href="/signup"
+              className="hidden items-center gap-2 rounded-xl bg-[#D1A765] px-5 py-2.5 text-sm font-semibold text-[#151515] transition hover:bg-[#E4BD7C] md:inline-flex"
+            >
+              {t.start}
+              <ArrowRight size={17} />
+            </Link>
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-white">
-                WJ
-              </div>
-            </div>
-          </header>
-
-          <div className="mx-auto max-w-[1600px] p-5 md:p-9">
-            {activePage === "Dashboard" ? (
-              <>
-                <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <p className="mb-1 text-sm text-[var(--text-secondary)]">
-  Hello,
-</p>
-                    <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                      {companyName}{" "}
-<span className="text-[var(--primary)]">✦</span> 
-                    </h2>
-                    {companyError && (
-  <p className="mt-2 text-sm text-red-500" role="alert">
-    {companyError}
-  </p>
-)}
-                    <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                      Demo dashboard · Sample financial data
-                    </p>
-                  </div>
-
-                 <div className="flex flex-wrap items-center justify-end gap-6">
-  <CurrencyTicker />
-
-  <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs">
-    <CalendarDays size={16} className="text-[var(--primary)]" />
-    Jan – Jun 2025
-    <ChevronDown size={15} />
-  </div>
-</div>
-                </div>
-
-                {/* Financial metrics */}
-                <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {metrics.map((metric) => {
-                    const Icon = metric.icon;
-
-                    return (
-                      <div
-                        key={metric.title}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[0_4px_20px_rgba(80,60,35,0.035)]"
-                      >
-                        <div className="mb-5 flex items-center justify-between">
-                          <span className="text-xs text-[var(--text-secondary)]">
-                            {metric.title}
-                          </span>
-                          <div className="rounded-lg bg-[var(--primary-soft)] p-2 text-[var(--primary)]">
-                            <Icon size={19} />
-                          </div>
-                        </div>
-
-                        <h3 className="text-2xl font-bold tracking-tight">
-                          {metric.value}
-                        </h3>
-
-                        {metric.change && (
-                          <p className="mt-3 text-xs text-[var(--text-secondary)]">
-                            <span
-                              className={`mr-2 rounded-full px-2 py-1 ${
-                                metric.positive
-                                  ? "bg-[#EAF3E7] text-[#427445]"
-                                  : "bg-[#FBE9E5] text-[#A54B3B]"
-                              }`}
-                            >
-                              {metric.change}
-                            </span>
-                            vs. previous period
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Charts */}
-                <div className="mb-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
-                  <section className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-                    <h3 className="mb-7 text-lg font-bold">
-                      Cash Flow Overview
-                    </h3>
-
-                    <div className="h-75 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={cashFlow}>
-                          <CartesianGrid
-                            stroke="var(--border)"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="month"
-                            tickLine={false}
-                            axisLine={false}
-                            tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
-                          />
-                          <YAxis
-                            tickLine={false}
-                            axisLine={false}
-                            tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
-                            tickFormatter={(value) => `${value / 1000}k`}
-                          />
-                          <Tooltip
-                            formatter={(value) =>
-                              money(Number(value ?? 0))
-                            }
-                          />
-                          <Legend />
-                          <Bar
-                            name="Revenue"
-                            dataKey="revenue"
-                            fill="var(--chart-primary)"
-                            radius={[5, 5, 0, 0]}
-                          />
-                          <Bar
-                            name="Expenses"
-                            dataKey="expenses"
-                            fill="var(--chart-secondary)"
-                            radius={[5, 5, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </section>
-
-                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-                    <h3 className="mb-7 text-lg font-bold">
-                      Profit Margin
-                    </h3>
-
-                    <div className="flex h-67.5 flex-col items-center justify-center gap-6">
-                      <div
-                        className="flex h-44 w-44 items-center justify-center rounded-full"
-                        style={{
-                          background:
-                            "conic-gradient(var(--chart-primary) 0% 41.9%, var(--chart-secondary) 41.9% 100%)",
-                        }}
-                      >
-                        <div className="flex h-36 w-36 flex-col items-center justify-center rounded-full bg-[var(--surface)]">
-                          <span className="text-3xl font-bold">41.9%</span>
-                          <span className="text-xs text-[var(--text-secondary)]">
-                            Net Profit
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-center text-xs text-[var(--text-secondary)]">
-                        Net profit as a percentage of revenue
-                      </p>
-                    </div>
-                  </section>
-                </div>
-
-                {/* Transactions */}
-                <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                  <div className="flex items-center justify-between border-b border-[var(--border)] p-6">
-                    <h3 className="text-lg font-bold">
-                      Recent Transactions
-                    </h3>
-                    <span className="text-xs text-[var(--primary)]">
-                      Demo data
-                    </span>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-190 text-left text-sm">
-                      <thead className="bg-[var(--sidebar)] text-xs text-[var(--text-secondary)]">
-                        <tr>
-                          <th className="px-6 py-4 font-medium">Date</th>
-                          <th className="px-6 py-4 font-medium">
-                            Description
-                          </th>
-                          <th className="px-6 py-4 font-medium">
-                            Category
-                          </th>
-                          <th className="px-6 py-4 font-medium">Type</th>
-                          <th className="px-6 py-4 text-right font-medium">
-                            Amount
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {filteredTransactions.map((transaction, index) => (
-                          <tr
-                            key={index}
-                            className="border-t border-[var(--border)]"
-                          >
-                            <td className="whitespace-nowrap px-6 py-4 text-[var(--text-secondary)]">
-                              {transaction.date}
-                            </td>
-                            <td className="px-6 py-4 font-medium">
-                              {transaction.description}
-                            </td>
-                            <td className="px-6 py-4 text-[var(--text-secondary)]">
-                              {transaction.category}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs ${
-                                  transaction.type === "Income"
-                                    ? "bg-[#EAF3E7] text-[#427445]"
-                                    : "bg-[#FBEAE6] text-[#A54B3B]"
-                                }`}
-                              >
-                                {transaction.type}
-                              </span>
-                            </td>
-                            <td
-                              className={`whitespace-nowrap px-6 py-4 text-right font-semibold ${
-                                transaction.amount >= 0
-                                  ? "text-[#427445]"
-                                  : "text-[#A54B3B]"
-                              }`}
-                            >
-                              {transaction.amount > 0 ? "+" : ""}
-                              {money(transaction.amount)}
-                            </td>
-                          </tr>
-                        ))}
-
-                        {filteredTransactions.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={5}
-                              className="px-6 py-10 text-center text-[var(--text-secondary)]"
-                            >
-                              No transactions found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              </>
-            ) : activePage === "Transactions" ? (
-  <TransactionsPage companyId={companyId} />
-) : activePage === "Contacts" ? (
-  <ContactsPage />
-) : activePage === "Settings" || activePage === "Configurações" ? (
-  <ThemeSelector />
-) : (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-10">
-                <p className="mb-2 text-sm text-[var(--primary)]">
-                  WJRFIN Workspace
-                </p>
-                <h2 className="text-3xl font-bold">{activePage}</h2>
-                <p className="mt-3 text-[var(--text-secondary)]">
-                  This module is coming in the next development phase.
-                </p>
-              </div>
-            )}
-
-            <footer className="mt-10 text-center text-xs text-[var(--text-secondary)]">
-              © {2026} WJRFIN. Business Financial
-              Intelligence.
-            </footer>
+            <button
+              type="button"
+              className="rounded-lg border border-white/15 p-2 lg:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle navigation"
+            >
+              {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+            </button>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+
+        {mobileMenuOpen && (
+          <nav className="flex flex-col gap-1 border-t border-white/10 px-6 py-4 lg:hidden">
+            {navigation.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-3 text-sm hover:bg-white/5"
+              >
+                {item.label}
+              </a>
+            ))}
+
+            <Link
+              href="/login"
+              className="rounded-lg px-3 py-3 text-sm hover:bg-white/5"
+            >
+              {t.signIn}
+            </Link>
+
+            <Link
+              href="/signup"
+              className="mt-2 rounded-lg bg-[#D1A765] px-4 py-3 text-center text-sm font-semibold text-black"
+            >
+              {t.start}
+            </Link>
+          </nav>
+        )}
+      </header>
+
+      
+       <section
+  id="home"
+  className="relative flex min-h-[560px] items-center overflow-hidden bg-[#101215] lg:min-h-[620px]"
+  style={{
+    backgroundImage:
+      "linear-gradient(90deg, rgba(10,11,13,0.98) 0%, rgba(10,11,13,0.90) 27%, rgba(10,11,13,0.35) 55%, rgba(10,11,13,0.05) 100%), url('/images/landing/executive-office-final.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  }}
+>
+
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_75%_45%,rgba(180,139,78,0.16),transparent_55%)]" />
+
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-14 px-6 py-24 lg:grid-cols-2">
+          <div>
+            <p className="mb-6 text-xs font-semibold tracking-[0.18em] text-[#D1A765]">
+              {t.eyebrow}
+            </p>
+
+            <h1 className="text-5xl font-bold leading-[1.08] tracking-tight sm:text-6xl xl:text-7xl">
+              {t.headline[0]}
+              <br />
+              {t.headline[1]}
+              <br />
+              <span className="text-[#D1A765]">
+                {t.headline[2]}
+              </span>
+            </h1>
+
+            <p className="mt-8 max-w-xl text-lg leading-8 text-white/65">
+              {t.description}
+            </p>
+
+            <Link
+              href="/signup"
+              className="mt-9 inline-flex items-center gap-3 rounded-xl bg-[#D1A765] px-8 py-4 font-semibold text-[#171717] shadow-lg shadow-[#B48B4E]/10 transition duration-300 hover:-translate-y-1 hover:bg-[#E4BD7C]"
+            >
+              {t.start}
+              <ArrowRight size={20} />
+            </Link>
+
+            <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3">
+              {t.benefits.map((benefit) => (
+                <span
+                  key={benefit}
+                  className="flex items-center gap-2 text-xs text-white/70"
+                >
+                  <Check size={15} className="text-[#D1A765]" />
+                  {benefit}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* {t.mobile.eyebrow} — BEACH SECTION */}
+      <section
+        id="features"
+        className="relative overflow-hidden bg-[#141618]"
+      >
+        <div className="grid min-h-[480px] lg:grid-cols-2">
+          <div
+            className="min-h-[360px] bg-cover bg-center lg:min-h-[480px]"
+            style={{
+              backgroundImage:
+                "url('/images/landing/beach-mobile-final.png')",
+            }}
+          />
+
+          <div className="flex flex-col justify-center px-8 py-14 lg:px-14">
+            <p className="mb-4 text-sm font-semibold tracking-widest text-[#D1A765]">
+              {t.mobile.eyebrow}
+            </p>
+
+            <h2 className="max-w-xl text-4xl font-bold leading-tight tracking-tight text-white lg:text-5xl">
+              {t.mobile.title}
+              <span className="text-[#D1A765]">
+                {" "}{t.mobile.highlight}
+              </span>
+            </h2>
+
+            <p className="mt-5 max-w-xl text-base leading-7 text-white/65">
+              A secure and flexible platform to manage your
+              company's finances from the office, at home
+              or on the go.
+            </p>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              {t.mobile.features.map((feature) => (
+                <div
+                  key={feature.title}
+                  className="rounded-2xl border border-[#B48B4E]/20 bg-[#1B1D20] p-5 transition duration-300 hover:-translate-y-1 hover:border-[#D1A765]/60"
+                >
+                  <div className="mb-4 h-1 w-9 rounded-full bg-[#D1A765]" />
+                  <h3 className="text-sm font-semibold text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-3 text-xs leading-5 text-white/55">
+                    {feature.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+            {/* FOOTER */}
+      <footer className="border-t border-[#B48B4E]/25 bg-[#101215] px-6 py-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-center">
+          <p className="text-center text-xs tracking-widest text-white/45">
+            © 2026{" "}
+            <span className="font-semibold text-[#D1A765]">
+              WJRFIN
+            </span>
+            . All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </main>
   );
 }
-
