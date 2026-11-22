@@ -616,7 +616,7 @@ const realMetrics = [
                   </div>
 
                  <div className="flex flex-wrap items-center justify-end gap-6">
-  <CurrencyTicker />
+  <CurrencyTicker companyCurrency={companyCurrency} />
 
   <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs">
     <CalendarDays size={16} className="text-[var(--primary)]" />

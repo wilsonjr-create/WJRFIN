@@ -139,9 +139,19 @@ function CurrencySelect({
   );
 }
 
-export default function CurrencyTicker() {
+export default function CurrencyTicker({
+  companyCurrency,
+}: {
+  companyCurrency: string;
+}) {
+  const defaultCurrency: Currency = currencies.some(
+    (item) => item.code === companyCurrency
+  )
+    ? (companyCurrency as Currency)
+    : "EUR";
+
   const [data, setData] = useState<ExchangeResponse | null>(null);
-  const [from, setFrom] = useState<Currency>("EUR");
+  const [from, setFrom] = useState<Currency>(defaultCurrency);
   const [to, setTo] = useState<Currency>("USD");
   const [paused, setPaused] = useState(false);
   const [manual, setManual] = useState(false);
@@ -187,6 +197,12 @@ export default function CurrencyTicker() {
     });
     return () => controller.abort();
   }, [loadRates]);
+
+  useEffect(() => {
+    if (!manual) {
+      setFrom(defaultCurrency);
+    }
+  }, [defaultCurrency, manual]);
 
   useEffect(() => {
     if (paused || manual) return;
