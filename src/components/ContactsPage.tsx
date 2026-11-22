@@ -1,5 +1,6 @@
 "use client";
 import { translate } from "@/lib/i18n";
+import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 import { useEffect, useMemo, useState } from "react";
@@ -26,20 +27,17 @@ type Contact = {
   type: ContactType;
 };
 
-const STORAGE_KEY = "wjrfin-contacts-v1";
 
 const inputClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]";
 
-function createId() {
-  return crypto.randomUUID();
-}
-
-export default function ContactsPage() {
+export default function ContactsPage({ companyId }: { companyId: string | null }) {
   const { language } = useLanguage();
   const t = (key: string) => translate(language, key);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
@@ -55,46 +53,39 @@ export default function ContactsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    let initial: Contact[] = [];
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
 
-      if (saved !== null) {
-        const parsed: unknown = JSON.parse(saved);
+    async function loadContacts() {
+      if (!companyId) {
+        queueMicrotask(() => {
+          if (!cancelled) {
+            setContacts([]);
+            setLoading(false);
+          }
+        });
+        return;
+      }
 
-        if (Array.isArray(parsed)) {
-          initial = parsed as Contact[];
-        } else {
-          initial = [];
-        }
+      const supabase = createClient();
+      const { data, error: fetchError } = await supabase
+        .from("contacts")
+        .select("id, name, company, email, phone, type")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+      if (fetchError) {
+        setError(fetchError.message);
+        setContacts([]);
       } else {
-        initial = [];
+        setError("");
+        setContacts((data ?? []) as Contact[]);
       }
-    } catch {
-      initial = [];
+      setLoading(false);
     }
 
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setContacts(initial);
-        setLoaded(true);
-      }
-    });
+    void loadContacts();
     return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(contacts)
-      );
-    } catch (error) {
-      console.error("Could not save contacts:", error);
-    }
-  }, [contacts, loaded]);
+  }, [companyId]);
 
   const totalClients = contacts.filter(
     (contact) => contact.type === "Client"
@@ -142,48 +133,90 @@ export default function ContactsPage() {
     setModalOpen(true);
   }
 
-  function saveContact(event: FormEvent<HTMLFormElement>) {
+  async function saveContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!companyId || saving || !name.trim() || !email.trim()) return;
+    setSaving(true);
+    setError("");
 
-    if (!name.trim() || !email.trim()) return;
+    try {
+      const supabase = createClient();
+      const values = {
+        name: name.trim(),
+        company: company.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        type,
+      };
 
-    const contact: Contact = {
-      id: editingId ?? createId(),
-      name: name.trim(),
-      company: company.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      type,
-    };
+      if (editingId) {
+        const { data, error: updateError } = await supabase
+          .from("contacts")
+          .update(values)
+          .eq("id", editingId)
+          .eq("company_id", companyId)
+          .select("id, name, company, email, phone, type")
+          .single();
+        if (updateError) throw updateError;
+        setContacts((current) => current.map((item) =>
+          item.id === editingId ? (data as Contact) : item
+        ));
+      } else {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError || !auth.user) throw new Error("Authentication required.");
+        const { data, error: insertError } = await supabase
+          .from("contacts")
+          .insert({ ...values, company_id: companyId, user_id: auth.user.id })
+          .select("id, name, company, email, phone, type")
+          .single();
+        if (insertError) throw insertError;
+        setContacts((current) => [data as Contact, ...current]);
+      }
 
-    if (editingId) {
-      setContacts((current) =>
-        current.map((item) =>
-          item.id === editingId ? contact : item
-        )
-      );
-    } else {
-      setContacts((current) => [contact, ...current]);
+      setModalOpen(false);
+      resetForm();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save contact.");
+    } finally {
+      setSaving(false);
     }
-
-    setModalOpen(false);
-    resetForm();
   }
 
-  function deleteContact(id: string) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this contact?"
-    );
-
+  async function deleteContact(id: string) {
+    if (!companyId || saving) return;
+    const confirmed = window.confirm(t("Are you sure you want to delete this contact?"));
     if (!confirmed) return;
-
-    setContacts((current) =>
-      current.filter((item) => item.id !== id)
-    );
+    setSaving(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const { data, error: deleteError } = await supabase
+        .from("contacts")
+        .delete()
+        .eq("id", id)
+        .eq("company_id", companyId)
+        .select("id");
+      if (deleteError) throw deleteError;
+      if (!data?.length) throw new Error("Contact could not be deleted. Check your permissions.");
+      setContacts((current) => current.filter((item) => item.id !== id));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to delete contact.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="space-y-7">
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+      {loading && <p className="text-sm text-[var(--text-secondary)]">{t("Loading...")}</p>}
+      {!companyId && !loading && (
+        <p className="text-sm text-[var(--text-secondary)]">{t("No company found for this account.")}</p>
+      )}
       {/* Page header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -203,6 +236,7 @@ export default function ContactsPage() {
 
         <button
           onClick={openNewModal}
+          disabled={!companyId || loading || saving}
           className="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
         >
           <Plus size={17} />
@@ -366,9 +400,8 @@ export default function ContactsPage() {
                       </button>
 
                       <button
-                        onClick={() =>
-                          deleteContact(contact.id)
-                        }
+                        onClick={() => { void deleteContact(contact.id); }}
+                        disabled={saving}
                         aria-label={`${t("Delete")}: ${contact.name}`}
                         className="rounded-lg p-2 text-[#A54B3B] transition hover:bg-[#FBEAE6]"
                       >
@@ -395,7 +428,7 @@ export default function ContactsPage() {
       </section>
 
       <p className="text-xs text-[var(--text-secondary)]">
-        {t("Contacts are stored locally in this browser. Sample contacts are provided for demonstration.")}
+        {t("Contacts are saved securely for your company.")}
       </p>
 
       {/* Add / Edit modal */}
@@ -556,6 +589,7 @@ export default function ContactsPage() {
 
                 <button
                   type="submit"
+                  disabled={saving || !companyId}
                   className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                 >
                   {editingId

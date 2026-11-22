@@ -780,7 +780,7 @@ const realMetrics = [
 ) : activePage === "Reports" ? (
   <ReportsPage transactions={financialTransactions} companyCurrency={companyCurrency} loading={transactionsLoading} error={transactionsError} />
 ) : activePage === "Contacts" ? (
-  <ContactsPage />
+  <ContactsPage companyId={companyId} />
 ) : activePage === "Settings" || activePage === "Configurações" ? (
   <ThemeSelector />
 ) : (
