@@ -28,49 +28,6 @@ type Contact = {
 
 const STORAGE_KEY = "wjrfin-contacts-v1";
 
-const demoContacts: Contact[] = [
-  {
-    id: "demo-1",
-    name: "James Anderson",
-    company: "Acme Solutions",
-    email: "james@example.com",
-    phone: "+1 555 0101",
-    type: "Client",
-  },
-  {
-    id: "demo-2",
-    name: "Olivia Martinez",
-    company: "Global Supply Co.",
-    email: "olivia@example.com",
-    phone: "+1 555 0102",
-    type: "Supplier",
-  },
-  {
-    id: "demo-3",
-    name: "Daniel Roberts",
-    company: "Tech Innovations",
-    email: "daniel@example.com",
-    phone: "+1 555 0103",
-    type: "Client",
-  },
-  {
-    id: "demo-4",
-    name: "Sophia Williams",
-    company: "Creative Studio",
-    email: "sophia@example.com",
-    phone: "+1 555 0104",
-    type: "Client",
-  },
-  {
-    id: "demo-5",
-    name: "Michael Brown",
-    company: "Office Essentials",
-    email: "michael@example.com",
-    phone: "+1 555 0105",
-    type: "Supplier",
-  },
-];
-
 const inputClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)]";
 
@@ -97,6 +54,8 @@ export default function ContactsPage() {
   const [type, setType] = useState<ContactType>("Client");
 
   useEffect(() => {
+    let cancelled = false;
+    let initial: Contact[] = [];
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
 
@@ -104,18 +63,24 @@ export default function ContactsPage() {
         const parsed: unknown = JSON.parse(saved);
 
         if (Array.isArray(parsed)) {
-          setContacts(parsed as Contact[]);
+          initial = parsed as Contact[];
         } else {
-          setContacts([]);
+          initial = [];
         }
       } else {
-        setContacts([]);
+        initial = [];
       }
     } catch {
-      setContacts([]);
+      initial = [];
     }
 
-    setLoaded(true);
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setContacts(initial);
+        setLoaded(true);
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

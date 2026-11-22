@@ -36,7 +36,7 @@ export function LanguageProvider({
       saved === "pt-BR" ||
       saved === "pt-PT"
     ) {
-      setLanguage(saved);
+      queueMicrotask(() => setLanguage(saved));
     }
   }, []);
 

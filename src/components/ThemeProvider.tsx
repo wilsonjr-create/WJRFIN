@@ -50,7 +50,7 @@ export function ThemeProvider({
         ? (current as Theme)
         : "champagne";
 
-    setThemeState(initialTheme);
+    queueMicrotask(() => setThemeState(initialTheme));
   }, []);
 
   function setTheme(nextTheme: Theme) {

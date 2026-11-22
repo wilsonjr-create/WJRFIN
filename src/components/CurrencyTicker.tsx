@@ -181,7 +181,11 @@ export default function CurrencyTicker() {
   }, []);
 
   useEffect(() => {
-    void loadRates();
+    const controller = new AbortController();
+    void Promise.resolve().then(() => {
+      if (!controller.signal.aborted) return loadRates();
+    });
+    return () => controller.abort();
   }, [loadRates]);
 
   useEffect(() => {

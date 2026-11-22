@@ -4,6 +4,9 @@ import { translate } from "@/lib/i18n";
 import ThemeSelector from "@/components/ThemeSelector";
 import TransactionsPage from "@/components/TransactionsPage";
 import ContactsPage from "@/components/ContactsPage";
+import CashFlowPage from "@/components/CashFlowPage";
+import BillsPage from "@/components/BillsPage";
+import ReportsPage from "@/components/ReportsPage";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CurrencyTicker from "@/components/CurrencyTicker";
@@ -87,89 +90,8 @@ const navigation = [
   { name: "Settings", icon: Settings },
 ];
 
-const cashFlow = [
-  { month: "Jan", revenue: 55000, expenses: 39000 },
-  { month: "Feb", revenue: 68000, expenses: 45000 },
-  { month: "Mar", revenue: 78000, expenses: 51000 },
-  { month: "Apr", revenue: 85000, expenses: 58000 },
-  { month: "May", revenue: 96000, expenses: 68000 },
-  { month: "Jun", revenue: 112000, expenses: 75000 },
-];
 
-const transactions = [
-  {
-    date: "Jun 20, 2025",
-    description: "Client Payment – Acme Ltd.",
-    category: "Sales",
-    type: "Income",
-    amount: 12500,
-  },
-  {
-    date: "Jun 18, 2025",
-    description: "Office Rent",
-    category: "Facilities",
-    type: "Expense",
-    amount: -4200,
-  },
-  {
-    date: "Jun 16, 2025",
-    description: "Marketing Campaign",
-    category: "Marketing",
-    type: "Expense",
-    amount: -2850,
-  },
-  {
-    date: "Jun 14, 2025",
-    description: "Supplier Payment – Global Supply",
-    category: "Supplies",
-    type: "Expense",
-    amount: -6300,
-  },
-  {
-    date: "Jun 12, 2025",
-    description: "Service Revenue – Tech Solutions",
-    category: "Services",
-    type: "Income",
-    amount: 18900,
-  },
-];
 
-const metrics = [
-  {
-    title: "Total Revenue",
-    value: "$124,500.00",
-    change: "+12.4%",
-    positive: true,
-    icon: ArrowUpRight,
-  },
-  {
-    title: "Total Expenses",
-    value: "$72,340.00",
-    change: "-5.8%",
-    positive: true,
-    icon: ArrowDownRight,
-  },
-  {
-    title: "Net Profit",
-    value: "$52,160.00",
-    change: "+28.1%",
-    positive: true,
-    icon: ChartNoAxesCombined,
-  },
-  {
-    title: "Available Balance",
-    value: "$89,750.00",
-    change: null,
-    positive: true,
-    icon: Wallet,
-  },
-];
-
-const money = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
   type FinancialTransaction = {
   id: string;
   description: string;
@@ -196,8 +118,9 @@ export default function Home() {
   const [transactionsError, setTransactionsError] = useState("");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   useEffect(() => {
-  setCurrentDate(new Date());
-}, []);
+    const frame = window.requestAnimationFrame(() => setCurrentDate(new Date()));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   
   useEffect(() => {
     let cancelled = false;
@@ -371,7 +294,7 @@ const formatCompanyMoney = (value: number) =>
   );
 
   return {
-    month: monthDate.toLocaleDateString("en-US", {
+    month: monthDate.toLocaleDateString(language, {
       month: "short",
       year: "2-digit",
     }),
@@ -410,6 +333,14 @@ const metricTranslations = {
     balance: "Saldo disponível",
   },
 };
+
+const chartTranslations = {
+  en: { revenue: "Revenue", expenses: "Expenses", margin: "Profit Margin", profit: "Net Profit", explanation: "Net profit as a percentage of revenue" },
+  es: { revenue: "Ingresos", expenses: "Gastos", margin: "Margen de beneficio", profit: "Beneficio neto", explanation: "Beneficio neto como porcentaje de los ingresos" },
+  "pt-BR": { revenue: "Receitas", expenses: "Despesas", margin: "Margem de lucro", profit: "Lucro líquido", explanation: "Lucro líquido como percentual da receita" },
+  "pt-PT": { revenue: "Receitas", expenses: "Despesas", margin: "Margem de lucro", profit: "Lucro líquido", explanation: "Lucro líquido em percentagem da receita" },
+} as const;
+const chartLabels = chartTranslations[language];
 
 const metricLabels = metricTranslations[language];
 
@@ -684,7 +615,7 @@ const realMetrics = [
                             tickLine={false}
                             axisLine={false}
                             tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
-                            tickFormatter={(value) => `${value / 1000}k`}
+                            tickFormatter={(value: number) => value === 0 ? "0" : new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }).format(value)}
                           />
                           <Tooltip
   formatter={(value) =>
@@ -693,13 +624,13 @@ const realMetrics = [
 />
                           <Legend />
                           <Bar
-                            name="Revenue"
+                            name={chartLabels.revenue}
                             dataKey="revenue"
                             fill="var(--chart-primary)"
                             radius={[5, 5, 0, 0]}
                           />
                           <Bar
-                            name="Expenses"
+                            name={chartLabels.expenses}
                             dataKey="expenses"
                             fill="var(--chart-secondary)"
                             radius={[5, 5, 0, 0]}
@@ -711,7 +642,7 @@ const realMetrics = [
 
                   <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
                     <h3 className="mb-7 text-lg font-bold">
-                      Profit Margin
+                      {chartLabels.margin}
                     </h3>
 
                     <div className="flex h-67.5 flex-col items-center justify-center gap-6">
@@ -727,13 +658,13 @@ const realMetrics = [
   {profitMargin.toFixed(1)}%
 </span>
                           <span className="text-xs text-[var(--text-secondary)]">
-                            Net Profit
+                            {chartLabels.profit}
                           </span>
                         </div>
                       </div>
 
                       <p className="text-center text-xs text-[var(--text-secondary)]">
-                        Net profit as a percentage of revenue
+                        {chartLabels.explanation}
                       </p>
                     </div>
                   </section>
@@ -745,9 +676,6 @@ const realMetrics = [
                     <h3 className="text-lg font-bold">
                       {t("Recent Transactions")}
                     </h3>
-                    <span className="text-xs text-[var(--primary)]">
-                      Demo data
-                    </span>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -845,6 +773,12 @@ const realMetrics = [
   companyId={companyId}
   companyCurrency={companyCurrency}
 />
+) : activePage === "Cash Flow" ? (
+  <CashFlowPage transactions={financialTransactions} companyCurrency={companyCurrency} loading={transactionsLoading} error={transactionsError} />
+) : activePage === "Bills" ? (
+  <BillsPage companyId={companyId} companyCurrency={companyCurrency} />
+) : activePage === "Reports" ? (
+  <ReportsPage transactions={financialTransactions} companyCurrency={companyCurrency} loading={transactionsLoading} error={transactionsError} />
 ) : activePage === "Contacts" ? (
   <ContactsPage />
 ) : activePage === "Settings" || activePage === "Configurações" ? (

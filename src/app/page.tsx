@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  Globe2,
   Menu,
   X,
 } from "lucide-react";
@@ -46,7 +45,7 @@ mobile: {
   eyebrow: "WORK ANYWHERE",
   title: "Full control of your business,",
   highlight: "anytime, anywhere.",
-  description: "A secure and flexible platform to manage your company's finances from the office, at home or on the go.",
+  description: "A secure and flexible platform to manage your company&apos;s finances from the office, at home or on the go.",
   features: [
     { title: "Financial Control", description: "Track income, expenses and balance." },
     { title: "Business Insights", description: "Clear reports for smarter decisions." },
@@ -357,7 +356,7 @@ export default function HomePage() {
 
             <p className="mt-5 max-w-xl text-base leading-7 text-white/65">
               A secure and flexible platform to manage your
-              company's finances from the office, at home
+              company&apos;s finances from the office, at home
               or on the go.
             </p>
 

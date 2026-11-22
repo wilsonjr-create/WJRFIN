@@ -26,43 +26,6 @@ type Transaction = {
   date: string;
 };
 
-const STORAGE_KEY = "wjrfin-transactions-v1";
-
-const demoTransactions: Transaction[] = [
-  {
-    id: "demo-1",
-    description: "Website Development",
-    category: "Services",
-    type: "Income",
-    amount: 4500,
-    date: "2026-11-15",
-  },
-  {
-    id: "demo-2",
-    description: "Office Rent",
-    category: "Facilities",
-    type: "Expense",
-    amount: 1200,
-    date: "2026-11-12",
-  },
-  {
-    id: "demo-3",
-    description: "Consulting Services",
-    category: "Services",
-    type: "Income",
-    amount: 2800,
-    date: "2026-11-10",
-  },
-  {
-    id: "demo-4",
-    description: "Software Subscription",
-    category: "Software",
-    type: "Expense",
-    amount: 149,
-    date: "2026-11-08",
-  },
-];
-
 const categories = [
   "Sales",
   "Services",
@@ -73,18 +36,6 @@ const categories = [
   "Payroll",
   "Other",
 ];
-
-
-const formatDate = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-function createId() {
-  return crypto.randomUUID();
-}
 
 
 export default function TransactionsPage({
@@ -171,9 +122,8 @@ setTransactions(companyTransactions);
 useEffect(() => {
   if (!companyId) return;
 
-  void fetchCompanyTransactions();
+  void Promise.resolve().then(() => fetchCompanyTransactions());
 
-  // Teste inicial da conexão com o Supabase.
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [companyId]);
 

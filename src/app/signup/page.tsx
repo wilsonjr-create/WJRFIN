@@ -46,15 +46,15 @@ const [success, setSuccess] = useState("");
 
 useEffect(() => {
   if (!companyLogo) {
-    setLogoPreview(null);
     return;
   }
 
   const url = URL.createObjectURL(companyLogo);
-  setLogoPreview(url);
+  queueMicrotask(() => setLogoPreview(url));
 
   return () => {
     URL.revokeObjectURL(url);
+    queueMicrotask(() => setLogoPreview(null));
   };
 }, [companyLogo]);
   const canContinue =
