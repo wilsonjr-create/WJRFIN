@@ -1,0 +1,103 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ChevronDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
+
+const currencies = [
+  { pair: "USD/BRL", name: "US Dollar" },
+  { pair: "EUR/BRL", name: "Euro" },
+  { pair: "GBP/BRL", name: "British Pound" },
+  { pair: "ARS/BRL", name: "Argentine Peso" },
+  { pair: "PYG/BRL", name: "Paraguayan Guarani" },
+];
+
+export default function CurrencyTicker() {
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (paused || expanded) return;
+
+    const timer = window.setInterval(() => {
+      setActive((current) => (current + 1) % currencies.length);
+    }, 4000);
+
+    return () => window.clearInterval(timer);
+  }, [paused, expanded]);
+
+  const currency = currencies[active];
+
+  return (
+    <div
+      className="relative hidden xl:block"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        aria-label="Select currency pair"
+        className="flex h-10 w-55 items-center justify-between overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 transition-colors hover:bg-[var(--primary-soft)]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
+            <ArrowUpRight size={15} />
+          </div>
+
+          <div className="relative h-8 w-28 overflow-hidden text-left">
+            <div
+              className="absolute left-0 top-0 w-full transition-transform duration-700 ease-in-out"
+              style={{
+                transform: `translateY(-${active * 32}px)`,
+              }}
+            >
+              {currencies.map((item) => (
+                <div
+                  key={item.pair}
+                  className="flex h-8 flex-col justify-center"
+                >
+                  <span className="text-[11px] font-bold leading-4">
+                    {item.pair}
+                  </span>
+                  <span className="truncate text-[9px] leading-3 text-[var(--text-secondary)]">
+                    {item.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <ChevronDown
+          size={14}
+          className={`text-[var(--text-secondary)] transition-transform ${
+            expanded ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="absolute right-0 top-12 z-50 w-55 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-xl">
+          {currencies.map((item, index) => (
+            <button
+              type="button"
+              key={item.pair}
+              onClick={() => {
+                setActive(index);
+                setExpanded(false);
+              }}
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--primary-soft)] ${
+                index === active ? "text-[var(--primary)]" : ""
+              }`}
+            >
+              <span>{item.pair}</span>
+              {index === active && <ArrowDownRight size={13} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

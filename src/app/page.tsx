@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ArrowRight,
   Check,
@@ -132,7 +133,8 @@ mobile: {
 };
 
 export default function HomePage() {
-  const [language, setLanguage] = useState<Language>("en");
+  const { language, changeLanguage } = useLanguage();
+  
   const [languageOpen, setLanguageOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -194,10 +196,10 @@ export default function HomePage() {
                     <button
                       key={item.code}
                       type="button"
-                      onClick={() => {
-                        setLanguage(item.code);
-                        setLanguageOpen(false);
-                      }}
+                     onClick={() => {
+  changeLanguage(item.code);
+  setLanguageOpen(false);
+}}
                       className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-[#B48B4E]/15"
                     >
                       <span className="flex items-center gap-3">

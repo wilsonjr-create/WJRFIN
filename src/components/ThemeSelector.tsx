@@ -1,5 +1,6 @@
-
 "use client";
+import { translate } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 import { Check, Palette } from "lucide-react";
 import { useTheme, type Theme } from "./ThemeProvider";
@@ -56,6 +57,8 @@ const themes: {
 
 export default function ThemeSelector() {
   const { theme, setTheme } = useTheme();
+  const { language } = useLanguage();
+  const t = (key: string) => translate(language, key);
 
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
@@ -66,10 +69,10 @@ export default function ThemeSelector() {
 
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">
-            Aparência
+            {t("Aparência")}
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Personalize as cores da sua plataforma.
+            {t("Personalize as cores da sua plataforma.")}
           </p>
         </div>
       </div>
@@ -127,7 +130,7 @@ export default function ThemeSelector() {
                     {item.name}
                   </p>
                   <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                    {item.description}
+                    {t(item.description)}
                   </p>
                 </div>
 
@@ -143,7 +146,7 @@ export default function ThemeSelector() {
       </div>
 
       <p className="mt-6 text-xs text-[var(--text-secondary)]">
-        Sua preferência é salva automaticamente neste navegador.
+        {t("Sua preferência é salva automaticamente neste navegador.")}
       </p>
     </section>
   );

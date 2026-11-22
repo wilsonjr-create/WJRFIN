@@ -288,7 +288,7 @@ const formattedChange =
 
       <div className="flex shrink-0 items-center gap-2">
         <span className="hidden text-[10px] text-[var(--text-secondary)] lg:block">
-          {error ? "Indisponível" : `Ref.: ${dateLabel}`}
+         {error ? "Indisponível" : `Última cotação: ${dateLabel}`}
         </span>
 
         <button

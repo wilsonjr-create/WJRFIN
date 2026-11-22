@@ -1,5 +1,6 @@
-
 "use client";
+import { translate } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -73,11 +74,6 @@ const categories = [
   "Other",
 ];
 
-const money = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
 
 const formatDate = (date: string) =>
   new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
@@ -93,10 +89,21 @@ function createId() {
 
 export default function TransactionsPage({
   companyId,
+  companyCurrency,
 }: {
   companyId: string | null;
+  companyCurrency: string;
 }) {
-
+  const { language } = useLanguage();
+  const t = (key: string) => translate(language, key);
+  const money = (value: number) =>
+  new Intl.NumberFormat(
+    companyCurrency === "BRL" ? "pt-BR" : "en-US",
+    {
+      style: "currency",
+      currency: companyCurrency,
+    }
+  ).format(value);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [transactionsError, setTransactionsError] = useState("");
@@ -111,7 +118,7 @@ export default function TransactionsPage({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Services");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("2026-11-19");
+  const [date, setDate] = useState("");
 
 async function fetchCompanyTransactions() {
   if (!companyId) {
@@ -310,33 +317,36 @@ async function saveTransaction(
   }
 }
 
-  function deleteTransaction(id: string) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this transaction?"
-    );
-
-    if (!confirmed) return;
-
-    setTransactions((current) =>
-      current.filter((item) => item.id !== id)
-    );
+  async function deleteTransaction(id: string) {
+    if (!companyId || !window.confirm(translate(language, "Are you sure you want to delete this transaction?"))) return;
+    setTransactionsError("");
+    const supabase = createClient();
+    const { error } = await supabase.from("transactions").delete()
+      .eq("id", id).eq("company_id", companyId);
+    if (error) {
+      setTransactionsError(error.message);
+      return;
+    }
+    await fetchCompanyTransactions();
   }
 
   return (
     <div className="space-y-7">
+      {transactionsError && <p role="alert" className="text-sm text-red-500">{transactionsError}</p>}
+      {loadingTransactions && <p className="text-sm text-[var(--text-secondary)]">{t("Loading transactions...")}</p>}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="mb-1 text-sm text-[var(--text-secondary)]">
-            Financial Management
+            {t("Financial Management")}
           </p>
 
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Transactions{" "}
+            {t("Transactions")}{" "}
             <span className="text-[var(--primary)]">✦</span>
           </h2>
 
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Record and organize your business income and expenses.
+            {t("Record and organize your business income and expenses.")}
           </p>
         </div>
 
@@ -346,7 +356,7 @@ async function saveTransaction(
             className="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
             <Plus size={17} />
-            Add Income
+            {t("Add Income")}
           </button>
 
           <button
@@ -354,42 +364,45 @@ async function saveTransaction(
             className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold transition hover:bg-[var(--primary-soft)]"
           >
             <Plus size={17} />
-            Add Expense
+            {t("Add Expense")}
           </button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard
-          title="Total Income"
-          value={totals.income}
-          icon={<ArrowDownLeft size={19} />}
-          positive
-        />
+       <SummaryCard
+  title={t("Total Income")}
+  value={totals.income}
+  icon={<ArrowDownLeft size={19} />}
+  positive
+  money={money}
+/>
 
-        <SummaryCard
-          title="Total Expenses"
-          value={totals.expenses}
-          icon={<ArrowUpRight size={19} />}
-        />
+<SummaryCard
+  title={t("Total Expenses")}
+  value={totals.expenses}
+  icon={<ArrowUpRight size={19} />}
+  money={money}
+/>
 
-        <SummaryCard
-          title="Net Balance"
-          value={totals.balance}
-          icon={<Check size={19} />}
-          positive={totals.balance >= 0}
-        />
+<SummaryCard
+  title={t("Net Balance")}
+  value={totals.balance}
+  icon={<Check size={19} />}
+  positive={totals.balance >= 0}
+  money={money}
+/>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] p-5 md:p-6">
           <div>
             <h3 className="text-lg font-bold">
-              Transaction History
+              {t("Transaction History")}
             </h3>
 
             <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              {filteredTransactions.length} records
+              {filteredTransactions.length} {t("records")}
             </p>
           </div>
 
@@ -403,7 +416,7 @@ async function saveTransaction(
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search transactions..."
+                placeholder={t("Search transactions...")}
                 className="w-40 bg-transparent text-sm outline-none md:w-52"
               />
             </div>
@@ -413,9 +426,9 @@ async function saveTransaction(
               onChange={(event) => setFilter(event.target.value)}
               className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none"
             >
-              <option value="All">All Types</option>
-              <option value="Income">Income</option>
-              <option value="Expense">Expense</option>
+              <option value="All">{t("All Types")}</option>
+              <option value="Income">{t("Income")}</option>
+              <option value="Expense">{t("Expense")}</option>
             </select>
           </div>
         </div>
@@ -424,15 +437,15 @@ async function saveTransaction(
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-[var(--sidebar)] text-xs text-[var(--text-secondary)]">
               <tr>
-                <th className="px-6 py-4 font-medium">Date</th>
-                <th className="px-6 py-4 font-medium">Description</th>
-                <th className="px-6 py-4 font-medium">Category</th>
-                <th className="px-6 py-4 font-medium">Type</th>
+                <th className="px-6 py-4 font-medium">{t("Date")}</th>
+                <th className="px-6 py-4 font-medium">{t("Description")}</th>
+                <th className="px-6 py-4 font-medium">{t("Category")}</th>
+                <th className="px-6 py-4 font-medium">{t("Type")}</th>
                 <th className="px-6 py-4 text-right font-medium">
-                  Amount
+                  {t("Amount")}
                 </th>
                 <th className="px-6 py-4 text-right font-medium">
-                  Actions
+                  {t("Actions")}
                 </th>
               </tr>
             </thead>
@@ -444,7 +457,7 @@ async function saveTransaction(
                   className="border-t border-[var(--border)]"
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-[var(--text-secondary)]">
-                    {formatDate(item.date)}
+                    {new Date(`${item.date}T12:00:00`).toLocaleDateString(language, { day: "numeric", month: "short", year: "numeric" })}
                   </td>
 
                   <td className="px-6 py-4 font-medium">
@@ -452,7 +465,7 @@ async function saveTransaction(
                   </td>
 
                   <td className="px-6 py-4 text-[var(--text-secondary)]">
-                    {item.category}
+                    {t(item.category)}
                   </td>
 
                   <td className="px-6 py-4">
@@ -463,7 +476,7 @@ async function saveTransaction(
                           : "bg-[#FBEAE6] text-[#A54B3B]"
                       }`}
                     >
-                      {item.type}
+                      {t(item.type)}
                     </span>
                   </td>
 
@@ -482,7 +495,7 @@ async function saveTransaction(
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => openEditModal(item)}
-                        aria-label={`Edit ${item.description}`}
+                        aria-label={`${t("Edit Transaction")}: ${item.description}`}
                         className="rounded-lg p-2 text-[var(--text-secondary)] transition hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
                       >
                         <Pencil size={16} />
@@ -490,7 +503,7 @@ async function saveTransaction(
 
                       <button
                         onClick={() => deleteTransaction(item.id)}
-                        aria-label={`Delete ${item.description}`}
+                        aria-label={`${t("Delete")}: ${item.description}`}
                         className="rounded-lg p-2 text-[#A54B3B] transition hover:bg-[#FBEAE6]"
                       >
                         <Trash2 size={16} />
@@ -506,7 +519,7 @@ async function saveTransaction(
                     colSpan={6}
                     className="px-6 py-12 text-center text-sm text-[var(--text-secondary)]"
                   >
-                    No transactions found.
+                    {t("No transactions found.")}
                   </td>
                 </tr>
               )}
@@ -516,8 +529,7 @@ async function saveTransaction(
       </section>
 
       <p className="text-xs text-[var(--text-secondary)]">
-        Financial tracking only. WJRFIN does not process payments
-        or transfer funds. Records are currently saved in this browser.
+        {t("Financial tracking only. WJRFIN does not process payments or transfer funds. Records are saved to your company workspace.")}
       </p>
 
       {modalOpen && (
@@ -535,20 +547,20 @@ async function saveTransaction(
                   className="text-xl font-bold"
                 >
                   {editingId
-                    ? "Edit Transaction"
+                    ? t("Edit Transaction")
                     : type === "Income"
-                      ? "Add Income"
-                      : "Add Expense"}
+                      ? t("Add Income")
+                      : t("Add Expense")}
                 </h3>
 
                 <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                  Manual financial record
+                  {t("Manual financial record")}
                 </p>
               </div>
 
               <button
                 onClick={() => setModalOpen(false)}
-                aria-label="Close form"
+                aria-label={t("Close form")}
                 className="rounded-lg p-2 hover:bg-[var(--primary-soft)]"
               >
                 <X size={20} />
@@ -558,7 +570,7 @@ async function saveTransaction(
             <form onSubmit={saveTransaction} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-semibold">
-                  Transaction Type
+                  {t("Transaction Type")}
                 </label>
 
                 <select
@@ -568,14 +580,14 @@ async function saveTransaction(
                   }
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm outline-none"
                 >
-                  <option value="Income">Income</option>
-                  <option value="Expense">Expense</option>
+                  <option value="Income">{t("Income")}</option>
+                  <option value="Expense">{t("Expense")}</option>
                 </select>
               </div>
 
               <div>
                 <label className="mb-2 block text-xs font-semibold">
-                  Description
+                  {t("Description")}
                 </label>
 
                 <input
@@ -585,7 +597,7 @@ async function saveTransaction(
                   onChange={(event) =>
                     setDescription(event.target.value)
                   }
-                  placeholder="e.g. Client payment, Office rent..."
+                  placeholder={t("e.g. Client payment, Office rent...")}
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm outline-none"
                 />
               </div>
@@ -593,7 +605,7 @@ async function saveTransaction(
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-xs font-semibold">
-                    Amount (USD)
+                   {t("Amount")} ({companyCurrency})
                   </label>
 
                   <input
@@ -612,7 +624,7 @@ async function saveTransaction(
 
                 <div>
                   <label className="mb-2 block text-xs font-semibold">
-                    Date
+                    {t("Date")}
                   </label>
 
                   <input
@@ -629,7 +641,7 @@ async function saveTransaction(
 
               <div>
                 <label className="mb-2 block text-xs font-semibold">
-                  Category
+                  {t("Category")}
                 </label>
 
                 <select
@@ -641,7 +653,7 @@ async function saveTransaction(
                 >
                   {categories.map((item) => (
                     <option key={item} value={item}>
-                      {item}
+                      {t(item)}
                     </option>
                   ))}
                 </select>
@@ -653,7 +665,7 @@ async function saveTransaction(
                   onClick={() => setModalOpen(false)}
                   className="rounded-xl border border-[var(--border)] px-5 py-3 text-sm font-semibold"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
 
                 <button
@@ -661,7 +673,7 @@ async function saveTransaction(
                   disabled={savingTransaction}
                   className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                 >
-                  {editingId ? "Save Changes" : "Save Transaction"}
+                  {editingId ? t("Save Changes") : t("Save Transaction")}
                 </button>
               </div>
             </form>
@@ -677,11 +689,13 @@ function SummaryCard({
   value,
   icon,
   positive = false,
+  money,
 }: {
-  title: string;
+   title: string;
   value: number;
   icon: React.ReactNode;
   positive?: boolean;
+  money: (value: number) => string;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[0_4px_20px_rgba(80,60,35,0.035)]">

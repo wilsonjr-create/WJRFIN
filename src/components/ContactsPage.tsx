@@ -1,5 +1,6 @@
-
 "use client";
+import { translate } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -78,6 +79,8 @@ function createId() {
 }
 
 export default function ContactsPage() {
+  const { language } = useLanguage();
+  const t = (key: string) => translate(language, key);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -103,13 +106,13 @@ export default function ContactsPage() {
         if (Array.isArray(parsed)) {
           setContacts(parsed as Contact[]);
         } else {
-          setContacts(demoContacts);
+          setContacts([]);
         }
       } else {
-        setContacts(demoContacts);
+        setContacts([]);
       }
     } catch {
-      setContacts(demoContacts);
+      setContacts([]);
     }
 
     setLoaded(true);
@@ -220,16 +223,16 @@ export default function ContactsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="mb-1 text-sm text-[var(--text-secondary)]">
-            Business Directory
+            {t("Business Directory")}
           </p>
 
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Contacts{" "}
+            {t("Contacts")}{" "}
             <span className="text-[var(--primary)]">✦</span>
           </h2>
 
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Manage your clients, suppliers and business relationships.
+            {t("Manage your clients, suppliers and business relationships.")}
           </p>
         </div>
 
@@ -238,26 +241,26 @@ export default function ContactsPage() {
           className="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
         >
           <Plus size={17} />
-          Add Contact
+          {t("Add Contact")}
         </button>
       </div>
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <SummaryCard
-          title="Total Contacts"
+          title={t("Total Contacts")}
           value={contacts.length}
           icon={<Users size={19} />}
         />
 
         <SummaryCard
-          title="Clients"
+          title={t("Clients")}
           value={totalClients}
           icon={<Users size={19} />}
         />
 
         <SummaryCard
-          title="Suppliers"
+          title={t("Suppliers")}
           value={totalSuppliers}
           icon={<Building2 size={19} />}
         />
@@ -268,11 +271,11 @@ export default function ContactsPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] p-5 md:p-6">
           <div>
             <h3 className="text-lg font-bold">
-              Contact Directory
+              {t("Contact Directory")}
             </h3>
 
             <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              {filteredContacts.length} contacts
+              {filteredContacts.length} {t("contacts")}
             </p>
           </div>
 
@@ -288,7 +291,7 @@ export default function ContactsPage() {
                 onChange={(event) =>
                   setSearch(event.target.value)
                 }
-                placeholder="Search contacts..."
+                placeholder={t("Search contacts...")}
                 className="w-40 bg-transparent text-sm outline-none md:w-52"
               />
             </div>
@@ -300,9 +303,9 @@ export default function ContactsPage() {
               }
               className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none"
             >
-              <option value="All">All Contacts</option>
-              <option value="Client">Clients</option>
-              <option value="Supplier">Suppliers</option>
+              <option value="All">{t("All Contacts")}</option>
+              <option value="Client">{t("Clients")}</option>
+              <option value="Supplier">{t("Suppliers")}</option>
             </select>
           </div>
         </div>
@@ -312,22 +315,22 @@ export default function ContactsPage() {
             <thead className="bg-[var(--sidebar)] text-xs text-[var(--text-secondary)]">
               <tr>
                 <th className="px-6 py-4 font-medium">
-                  Contact
+                  {t("Contact")}
                 </th>
                 <th className="px-6 py-4 font-medium">
-                  Company
+                  {t("Company")}
                 </th>
                 <th className="px-6 py-4 font-medium">
-                  Email
+                  {t("Email")}
                 </th>
                 <th className="px-6 py-4 font-medium">
-                  Phone
+                  {t("Phone")}
                 </th>
                 <th className="px-6 py-4 font-medium">
-                  Type
+                  {t("Type")}
                 </th>
                 <th className="px-6 py-4 text-right font-medium">
-                  Actions
+                  {t("Actions")}
                 </th>
               </tr>
             </thead>
@@ -381,7 +384,7 @@ export default function ContactsPage() {
                           : "bg-[#FBEAE6] text-[#A54B3B]"
                       }`}
                     >
-                      {contact.type}
+                      {t(contact.type)}
                     </span>
                   </td>
 
@@ -391,7 +394,7 @@ export default function ContactsPage() {
                         onClick={() =>
                           openEditModal(contact)
                         }
-                        aria-label={`Edit ${contact.name}`}
+                        aria-label={`${t("Edit Contact")}: ${contact.name}`}
                         className="rounded-lg p-2 text-[var(--text-secondary)] transition hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
                       >
                         <Pencil size={16} />
@@ -401,7 +404,7 @@ export default function ContactsPage() {
                         onClick={() =>
                           deleteContact(contact.id)
                         }
-                        aria-label={`Delete ${contact.name}`}
+                        aria-label={`${t("Delete")}: ${contact.name}`}
                         className="rounded-lg p-2 text-[#A54B3B] transition hover:bg-[#FBEAE6]"
                       >
                         <Trash2 size={16} />
@@ -417,7 +420,7 @@ export default function ContactsPage() {
                     colSpan={6}
                     className="px-6 py-12 text-center text-[var(--text-secondary)]"
                   >
-                    No contacts found.
+                    {t("No contacts found.")}
                   </td>
                 </tr>
               )}
@@ -427,8 +430,7 @@ export default function ContactsPage() {
       </section>
 
       <p className="text-xs text-[var(--text-secondary)]">
-        Contacts are stored locally in this browser.
-        Sample contacts are provided for demonstration.
+        {t("Contacts are stored locally in this browser. Sample contacts are provided for demonstration.")}
       </p>
 
       {/* Add / Edit modal */}
@@ -447,18 +449,18 @@ export default function ContactsPage() {
                   className="text-xl font-bold"
                 >
                   {editingId
-                    ? "Edit Contact"
-                    : "Add Contact"}
+                    ? t("Edit Contact")
+                    : t("Add Contact")}
                 </h3>
 
                 <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                  Business contact information
+                  {t("Business contact information")}
                 </p>
               </div>
 
               <button
                 onClick={() => setModalOpen(false)}
-                aria-label="Close form"
+                aria-label={t("Close form")}
                 className="rounded-lg p-2 hover:bg-[var(--primary-soft)]"
               >
                 <X size={20} />
@@ -474,7 +476,7 @@ export default function ContactsPage() {
                   htmlFor="contact-name"
                   className="mb-2 block text-xs font-semibold"
                 >
-                  Full Name
+                  {t("Full Name")}
                 </label>
 
                 <input
@@ -495,7 +497,7 @@ export default function ContactsPage() {
                   htmlFor="contact-company"
                   className="mb-2 block text-xs font-semibold"
                 >
-                  Company
+                  {t("Company")}
                 </label>
 
                 <input
@@ -515,7 +517,7 @@ export default function ContactsPage() {
                   htmlFor="contact-email"
                   className="mb-2 block text-xs font-semibold"
                 >
-                  Email Address
+                  {t("Email Address")}
                 </label>
 
                 <input
@@ -538,7 +540,7 @@ export default function ContactsPage() {
                     htmlFor="contact-phone"
                     className="mb-2 block text-xs font-semibold"
                   >
-                    Phone Number
+                    {t("Phone Number")}
                   </label>
 
                   <input
@@ -559,7 +561,7 @@ export default function ContactsPage() {
                     htmlFor="contact-type"
                     className="mb-2 block text-xs font-semibold"
                   >
-                    Contact Type
+                    {t("Contact Type")}
                   </label>
 
                   <select
@@ -572,8 +574,8 @@ export default function ContactsPage() {
                     }
                     className={inputClass}
                   >
-                    <option value="Client">Client</option>
-                    <option value="Supplier">Supplier</option>
+                    <option value="Client">{t("Client")}</option>
+                    <option value="Supplier">{t("Supplier")}</option>
                   </select>
                 </div>
               </div>
@@ -584,7 +586,7 @@ export default function ContactsPage() {
                   onClick={() => setModalOpen(false)}
                   className="rounded-xl border border-[var(--border)] px-5 py-3 text-sm font-semibold"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
 
                 <button
@@ -592,8 +594,8 @@ export default function ContactsPage() {
                   className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                 >
                   {editingId
-                    ? "Save Changes"
-                    : "Save Contact"}
+                    ? t("Save Changes")
+                    : t("Save Contact")}
                 </button>
               </div>
             </form>

@@ -1,4 +1,5 @@
 "use client";
+import { translate } from "@/lib/i18n";
 
 import ThemeSelector from "@/components/ThemeSelector";
 import TransactionsPage from "@/components/TransactionsPage";
@@ -6,6 +7,7 @@ import ContactsPage from "@/components/ContactsPage";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CurrencyTicker from "@/components/CurrencyTicker";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -35,6 +37,45 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+
+const navigationTranslations = {
+  en: {
+    Dashboard: "Dashboard",
+    Transactions: "Transactions",
+    "Cash Flow": "Cash Flow",
+    Bills: "Bills",
+    Contacts: "Contacts",
+    Reports: "Reports",
+    Settings: "Settings",
+  },
+  es: {
+    Dashboard: "Panel de control",
+    Transactions: "Transacciones",
+    "Cash Flow": "Flujo de caja",
+    Bills: "Facturas",
+    Contacts: "Contactos",
+    Reports: "Informes",
+    Settings: "Configuración",
+  },
+  "pt-BR": {
+    Dashboard: "Painel",
+    Transactions: "Transações",
+    "Cash Flow": "Fluxo de caixa",
+    Bills: "Contas",
+    Contacts: "Contatos",
+    Reports: "Relatórios",
+    Settings: "Configurações",
+  },
+  "pt-PT": {
+    Dashboard: "Painel",
+    Transactions: "Transações",
+    "Cash Flow": "Fluxo de caixa",
+    Bills: "Faturas",
+    Contacts: "Contactos",
+    Reports: "Relatórios",
+    Settings: "Definições",
+  },
+};
 
 const navigation = [
   { name: "Dashboard", icon: LayoutDashboard },
@@ -129,8 +170,17 @@ const money = (value: number) =>
     style: "currency",
     currency: "USD",
   }).format(value);
-
+  type FinancialTransaction = {
+  id: string;
+  description: string;
+  category: string;
+  type: "Income" | "Expense";
+  amount: number;
+  date: string;
+};
 export default function Home() {
+  const { language } = useLanguage();
+  const t = (key: string) => translate(language, key);
   const [activePage, setActivePage] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -139,6 +189,16 @@ export default function Home() {
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState("");
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [companyCurrency, setCompanyCurrency] = useState("USD");
+  const [financialTransactions, setFinancialTransactions] =
+  useState<FinancialTransaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [transactionsError, setTransactionsError] = useState("");
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  useEffect(() => {
+  setCurrentDate(new Date());
+}, []);
+  
   useEffect(() => {
     let cancelled = false;
 
@@ -181,7 +241,7 @@ if (authError || !user) {
       const { data: company, error: companyFetchError } =
         await supabase
           .from("companies")
-          .select("name, logo_path")
+          .select("name, logo_path, primary_currency")
           .eq("id", membership.company_id)
           .single();
 
@@ -209,6 +269,7 @@ if (company.logo_path) {
 }
      setCompanyId(membership.company_id);
 setCompanyName(company.name);
+setCompanyCurrency(company.primary_currency);
 setCompanyError("");
     }
 
@@ -218,12 +279,177 @@ setCompanyError("");
       cancelled = true;
     };
   }, []);
+useEffect(() => {
+  let cancelled = false;
 
-  const filteredTransactions = transactions.filter((transaction) =>
+  async function loadTransactions() {
+    if (!companyId) {
+      setFinancialTransactions([]);
+      setTransactionsLoading(false);
+      return;
+    }
+
+    setTransactionsLoading(true);
+    setTransactionsError("");
+
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, description, category, type, amount, date")
+      .eq("company_id", companyId)
+      .order("date", { ascending: false });
+
+    if (cancelled) return;
+
+    if (error) {
+      setFinancialTransactions([]);
+      setTransactionsError(error.message);
+    } else {
+      setFinancialTransactions(
+        (data ?? []).map((item) => ({
+          id: item.id,
+          description: item.description,
+          category: item.category,
+          type: item.type as "Income" | "Expense",
+          amount: Number(item.amount),
+          date: item.date,
+        }))
+      );
+    }
+
+    setTransactionsLoading(false);
+  }
+
+  void loadTransactions();
+
+  return () => {
+    cancelled = true;
+  };
+}, [companyId]);
+const totalRevenue = financialTransactions
+  .filter((transaction) => transaction.type === "Income")
+  .reduce((total, transaction) => total + transaction.amount, 0);
+
+const totalExpenses = financialTransactions
+  .filter((transaction) => transaction.type === "Expense")
+  .reduce((total, transaction) => total + transaction.amount, 0);
+
+const netProfit = totalRevenue - totalExpenses;
+const availableBalance = netProfit;
+const profitMargin =
+  totalRevenue > 0
+    ? Math.max(0, Math.min(100, (netProfit / totalRevenue) * 100))
+    : 0;
+const formatCompanyMoney = (value: number) =>
+  new Intl.NumberFormat(
+    companyCurrency === "BRL" ? "pt-BR" : "en-US",
+    {
+      style: "currency",
+      currency: companyCurrency,
+    }
+  ).format(value);
+  const realCashFlow = Array.from({ length: 6 }, (_, index) => {
+  const monthDate = currentDate
+    ? new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() - 5 + index,
+        1
+      )
+    : new Date(2000, index, 1);
+
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+
+  const monthlyTransactions = financialTransactions.filter(
+    (transaction) => {
+      const [transactionYear, transactionMonth] =
+        transaction.date.split("-").map(Number);
+
+      return transactionYear === year && transactionMonth === month + 1;
+    }
+  );
+
+  return {
+    month: monthDate.toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+    }),
+    revenue: monthlyTransactions
+      .filter((transaction) => transaction.type === "Income")
+      .reduce((total, transaction) => total + transaction.amount, 0),
+    expenses: monthlyTransactions
+      .filter((transaction) => transaction.type === "Expense")
+      .reduce((total, transaction) => total + transaction.amount, 0),
+  };
+});
+
+const metricTranslations = {
+  en: {
+    revenue: "Total Revenue",
+    expenses: "Total Expenses",
+    profit: "Net Profit",
+    balance: "Available Balance",
+  },
+  es: {
+    revenue: "Ingresos totales",
+    expenses: "Gastos totales",
+    profit: "Beneficio neto",
+    balance: "Saldo disponible",
+  },
+  "pt-BR": {
+    revenue: "Receita total",
+    expenses: "Despesas totais",
+    profit: "Lucro líquido",
+    balance: "Saldo disponível",
+  },
+  "pt-PT": {
+    revenue: "Receita total",
+    expenses: "Despesas totais",
+    profit: "Lucro líquido",
+    balance: "Saldo disponível",
+  },
+};
+
+const metricLabels = metricTranslations[language];
+
+const realMetrics = [
+  {
+    title: metricLabels.revenue,
+    value: formatCompanyMoney(totalRevenue),
+    change: null,
+    positive: true,
+    icon: ArrowUpRight,
+  },
+  {
+    title: metricLabels.expenses,
+    value: formatCompanyMoney(totalExpenses),
+    change: null,
+    positive: true,
+    icon: ArrowDownRight,
+  },
+  {
+    title: metricLabels.profit,
+    value: formatCompanyMoney(netProfit),
+    change: null,
+    positive: netProfit >= 0,
+    icon: ChartNoAxesCombined,
+  },
+  {
+    title: metricLabels.balance,
+    value: formatCompanyMoney(availableBalance),
+    change: null,
+    positive: availableBalance >= 0,
+    icon: Wallet,
+  },
+];
+  const filteredTransactions = financialTransactions
+  .filter((transaction) =>
     `${transaction.description} ${transaction.category}`
       .toLowerCase()
       .includes(search.toLowerCase())
-  );
+  )
+  .slice(0, 5);
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)]">
@@ -259,7 +485,7 @@ setCompanyError("");
         {companyName}
       </p>
       <p className="text-[9px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">
-        Business Workspace
+        {t("Business Workspace")}
       </p>
     </div>
   </div>
@@ -269,7 +495,7 @@ setCompanyError("");
         WJR<span className="text-[var(--primary)]">FIN</span>
       </h1>
       <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
-        Business Finance
+        {t("Business Finance")}
       </p>
     </div>
   )}
@@ -302,7 +528,9 @@ setCompanyError("");
                   }`}
                 >
                   <Icon size={18} strokeWidth={1.8} />
-                  {item.name}
+                  {navigationTranslations[language][
+  item.name as keyof typeof navigationTranslations.en
+]}
                 </button>
               );
             })}
@@ -312,10 +540,10 @@ setCompanyError("");
             <Crown className="mb-3 text-[var(--primary)]" size={25} />
             <h3 className="font-bold">WJRFIN Pro</h3>
             <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
-              Unlock advanced financial reports and team management.
+              {t("Unlock advanced financial reports and team management.")}
             </p>
             <button className="mt-4 w-full rounded-xl bg-[var(--primary)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
-              Coming Soon
+              {t("Coming Soon")}
             </button>
           </div>
         </aside>
@@ -333,7 +561,7 @@ setCompanyError("");
               </button>
 
               <span className="text-sm text-[var(--text-secondary)]">
-                Business Overview
+                {t("Business Overview")}
               </span>
             </div>
 
@@ -344,7 +572,7 @@ setCompanyError("");
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search transactions..."
+                  placeholder={t("Search transactions...")}
                   className="w-48 bg-transparent text-xs outline-none"
                 />
               </div>
@@ -363,7 +591,7 @@ setCompanyError("");
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <p className="mb-1 text-sm text-[var(--text-secondary)]">
-  Hello,
+  {t("Hello,")}
 </p>
                     <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
                       {companyName}{" "}
@@ -375,7 +603,7 @@ setCompanyError("");
   </p>
 )}
                     <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                      Demo dashboard · Sample financial data
+                      
                     </p>
                   </div>
 
@@ -384,7 +612,7 @@ setCompanyError("");
 
   <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs">
     <CalendarDays size={16} className="text-[var(--primary)]" />
-    Jan – Jun 2025
+    {currentDate ? new Intl.DateTimeFormat(language, {month: "short", year: "numeric"}).format(currentDate) : "—"}
     <ChevronDown size={15} />
   </div>
 </div>
@@ -392,7 +620,7 @@ setCompanyError("");
 
                 {/* Financial metrics */}
                 <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {metrics.map((metric) => {
+                  {realMetrics.map((metric) => {
                     const Icon = metric.icon;
 
                     return (
@@ -424,7 +652,7 @@ setCompanyError("");
                             >
                               {metric.change}
                             </span>
-                            vs. previous period
+                            {t("vs. previous period")}
                           </p>
                         )}
                       </div>
@@ -436,12 +664,12 @@ setCompanyError("");
                 <div className="mb-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
                   <section className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
                     <h3 className="mb-7 text-lg font-bold">
-                      Cash Flow Overview
+                      {t("Cash Flow Overview")}
                     </h3>
 
                     <div className="h-75 w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={cashFlow}>
+                        <BarChart data={realCashFlow}>
                           <CartesianGrid
                             stroke="var(--border)"
                             vertical={false}
@@ -459,10 +687,10 @@ setCompanyError("");
                             tickFormatter={(value) => `${value / 1000}k`}
                           />
                           <Tooltip
-                            formatter={(value) =>
-                              money(Number(value ?? 0))
-                            }
-                          />
+  formatter={(value) =>
+    formatCompanyMoney(Number(value ?? 0))
+  }
+/>
                           <Legend />
                           <Bar
                             name="Revenue"
@@ -491,11 +719,13 @@ setCompanyError("");
                         className="flex h-44 w-44 items-center justify-center rounded-full"
                         style={{
                           background:
-                            "conic-gradient(var(--chart-primary) 0% 41.9%, var(--chart-secondary) 41.9% 100%)",
+                           `conic-gradient(var(--chart-primary) 0% ${profitMargin}%, var(--chart-secondary) ${profitMargin}% 100%)`,
                         }}
                       >
                         <div className="flex h-36 w-36 flex-col items-center justify-center rounded-full bg-[var(--surface)]">
-                          <span className="text-3xl font-bold">41.9%</span>
+                          <span className="text-3xl font-bold">
+  {profitMargin.toFixed(1)}%
+</span>
                           <span className="text-xs text-[var(--text-secondary)]">
                             Net Profit
                           </span>
@@ -513,7 +743,7 @@ setCompanyError("");
                 <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
                   <div className="flex items-center justify-between border-b border-[var(--border)] p-6">
                     <h3 className="text-lg font-bold">
-                      Recent Transactions
+                      {t("Recent Transactions")}
                     </h3>
                     <span className="text-xs text-[var(--primary)]">
                       Demo data
@@ -524,16 +754,16 @@ setCompanyError("");
                     <table className="w-full min-w-190 text-left text-sm">
                       <thead className="bg-[var(--sidebar)] text-xs text-[var(--text-secondary)]">
                         <tr>
-                          <th className="px-6 py-4 font-medium">Date</th>
+                          <th className="px-6 py-4 font-medium">{t("Date")}</th>
                           <th className="px-6 py-4 font-medium">
-                            Description
+                            {t("Description")}
                           </th>
                           <th className="px-6 py-4 font-medium">
-                            Category
+                            {t("Category")}
                           </th>
-                          <th className="px-6 py-4 font-medium">Type</th>
+                          <th className="px-6 py-4 font-medium">{t("Type")}</th>
                           <th className="px-6 py-4 text-right font-medium">
-                            Amount
+                            {t("Amount")}
                           </th>
                         </tr>
                       </thead>
@@ -545,7 +775,9 @@ setCompanyError("");
                             className="border-t border-[var(--border)]"
                           >
                             <td className="whitespace-nowrap px-6 py-4 text-[var(--text-secondary)]">
-                              {transaction.date}
+                              {new Date(`${transaction.date}T12:00:00`).toLocaleDateString(
+  "pt-BR"
+)}
                             </td>
                             <td className="px-6 py-4 font-medium">
                               {transaction.description}
@@ -566,34 +798,53 @@ setCompanyError("");
                             </td>
                             <td
                               className={`whitespace-nowrap px-6 py-4 text-right font-semibold ${
-                                transaction.amount >= 0
-                                  ? "text-[#427445]"
-                                  : "text-[#A54B3B]"
+                               transaction.type === "Income"
+  ? "text-[#427445]"
+  : "text-[#A54B3B]"
                               }`}
                             >
-                              {transaction.amount > 0 ? "+" : ""}
-                              {money(transaction.amount)}
+                              {transaction.type === "Income" ? "+" : "-"}
+{formatCompanyMoney(Math.abs(transaction.amount))}
                             </td>
                           </tr>
                         ))}
 
-                        {filteredTransactions.length === 0 && (
+                        {!transactionsLoading &&
+  !transactionsError &&
+  filteredTransactions.length === 0 && (
                           <tr>
                             <td
                               colSpan={5}
                               className="px-6 py-10 text-center text-[var(--text-secondary)]"
                             >
-                              No transactions found.
+                              {t("No transactions found.")}
+                            </td>
+                          </tr>
+                        )}
+                     
+                        {(transactionsLoading || transactionsError) && (
+                          <tr>
+                            <td
+                              colSpan={5}
+                              className="px-6 py-10 text-center text-[var(--text-secondary)]"
+                            >
+                              {transactionsLoading
+                                ? "Loading transactions..."
+                                : `Unable to load transactions: ${transactionsError}`}
                             </td>
                           </tr>
                         )}
                       </tbody>
                     </table>
+
                   </div>
                 </section>
               </>
             ) : activePage === "Transactions" ? (
-  <TransactionsPage companyId={companyId} />
+  <TransactionsPage
+  companyId={companyId}
+  companyCurrency={companyCurrency}
+/>
 ) : activePage === "Contacts" ? (
   <ContactsPage />
 ) : activePage === "Settings" || activePage === "Configurações" ? (
@@ -601,18 +852,17 @@ setCompanyError("");
 ) : (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-10">
                 <p className="mb-2 text-sm text-[var(--primary)]">
-                  WJRFIN Workspace
+                  {t("WJRFIN Workspace")}
                 </p>
-                <h2 className="text-3xl font-bold">{activePage}</h2>
+                <h2 className="text-3xl font-bold">{navigationTranslations[language][activePage as keyof typeof navigationTranslations.en] ?? activePage}</h2>
                 <p className="mt-3 text-[var(--text-secondary)]">
-                  This module is coming in the next development phase.
+                  {t("This module is coming in the next development phase.")}
                 </p>
               </div>
             )}
 
             <footer className="mt-10 text-center text-xs text-[var(--text-secondary)]">
-              © {2026} WJRFIN. Business Financial
-              Intelligence.
+              © {2026} WJRFIN. {t("Business Financial Intelligence.")}
             </footer>
           </div>
         </main>
