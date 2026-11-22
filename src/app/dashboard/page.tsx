@@ -1,4 +1,5 @@
 "use client";
+import { currency, locales } from "@/lib/financial";
 import { translate } from "@/lib/i18n";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -294,13 +295,7 @@ const profitMargin =
     ? Math.max(0, Math.min(100, (netProfit / totalRevenue) * 100))
     : 0;
 const formatCompanyMoney = (value: number) =>
-  new Intl.NumberFormat(
-    companyCurrency === "BRL" ? "pt-BR" : "en-US",
-    {
-      style: "currency",
-      currency: companyCurrency,
-    }
-  ).format(value);
+  currency(value, companyCurrency, locales[language]);
   const realCashFlow = Array.from({ length: 6 }, (_, index) => {
   const monthDate = currentDate
     ? new Date(
