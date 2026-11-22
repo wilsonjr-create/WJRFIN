@@ -1,4 +1,5 @@
 "use client";
+import { currency, locales } from "@/lib/financial";
 import { translate } from "@/lib/i18n";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -48,13 +49,7 @@ export default function TransactionsPage({
   const { language } = useLanguage();
   const t = (key: string) => translate(language, key);
   const money = (value: number) =>
-  new Intl.NumberFormat(
-    companyCurrency === "BRL" ? "pt-BR" : "en-US",
-    {
-      style: "currency",
-      currency: companyCurrency,
-    }
-  ).format(value);
+    currency(value, companyCurrency, locales[language]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [transactionsError, setTransactionsError] = useState("");
