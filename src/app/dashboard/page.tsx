@@ -243,6 +243,7 @@ useEffect(() => {
     }
 
     setTransactionsLoading(true);
+    setFinancialTransactions([]);
     setTransactionsError("");
 
     const supabase = createClient();
