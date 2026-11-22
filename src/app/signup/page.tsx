@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translate } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { savePendingCompanyLogo } from "@/lib/pending-company-logo";
 import {
@@ -28,6 +30,8 @@ const inputClass =
   "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]";
 
 export default function SignupPage() {
+  const { language } = useLanguage();
+  const t = (key: string) => translate(language, key);
   const [step, setStep] = useState(1);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
@@ -81,7 +85,7 @@ async function handleCreateWorkspace() {
   setSuccess("");
 
   if (role !== "Owner") {
-    setError("Managers must join through an invitation.");
+    setError(t("Managers must join through an invitation."));
     return;
   }
 
@@ -92,7 +96,7 @@ async function handleCreateWorkspace() {
     password.length < 8 ||
     password !== confirmPassword
   ) {
-    setError("Please review your account details.");
+    setError(t("Please review your account details."));
     return;
   }
 
@@ -125,16 +129,16 @@ if (companyLogo && data.user) {
 }
     if (!data.session) {
       setSuccess(
-        "Check your email to confirm your account. Sign in afterward to finish setting up your company."
+        t("Check your email to confirm your account. Sign in afterward to finish setting up your company.")
       );
       return;
     }
 
     setSuccess(
-      "Account created. Company setup is the next step."
+      t("Account created. Company setup is the next step.")
     );
   } catch {
-    setError("Unable to create your account. Please try again.");
+    setError(t("Unable to create your account. Please try again."));
   } finally {
     setLoading(false);
   }
@@ -149,12 +153,12 @@ if (companyLogo && data.user) {
               WJR<span className="text-[var(--primary)]">FIN</span>
             </h1>
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-              Business Finance
+              {t("Business Finance")}
             </p>
           </div>
 
           <span className="text-sm text-[var(--text-secondary)]">
-            Step {step} of 3
+            {t("Step")} {step} {t("of")} 3
           </span>
         </header>
 
@@ -177,20 +181,20 @@ if (companyLogo && data.user) {
               <div>
                 <Building2 className="mb-5 text-[var(--primary)]" size={30} />
                 <h2 className="text-3xl font-semibold tracking-tight">
-                  Create your workspace.
+                  {t("Create your workspace.")}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                  Tell us about your business to personalize your experience.
+                  {t("Tell us about your business to personalize your experience.")}
                 </p>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Company name
+                  {t("Company name")}
                 </label>
                 <input
                   className={inputClass}
-                  placeholder="e.g. Acme Technologies"
+                  placeholder={t("e.g. Acme Technologies")}
                   value={company}
                   onChange={(event) => setCompany(event.target.value)}
                   maxLength={100}
@@ -200,7 +204,7 @@ if (companyLogo && data.user) {
 
                 <div>
   <label className="mb-2 block text-sm font-medium">
-    Company Logo (Optional)
+    {t("Company Logo (Optional)")}
   </label>
 
   <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background)] p-5">
@@ -211,7 +215,7 @@ if (companyLogo && data.user) {
     width={64}
     height={64}
     src={logoPreview}
-    alt="Company logo preview"
+    alt={t("Company logo preview")}
     className="h-16 w-16 rounded-xl object-contain"
   />
       ) : (
@@ -229,7 +233,7 @@ if (companyLogo && data.user) {
             const file = event.target.files?.[0] ?? null;
 
             if (file && file.size > 2 * 1024 * 1024) {
-              setError("Logo must be smaller than 2 MB.");
+              setError(t("Logo must be smaller than 2 MB."));
               event.target.value = "";
               return;
             }
@@ -240,7 +244,7 @@ if (companyLogo && data.user) {
         />
 
         <p className="mt-2 text-xs text-[var(--text-secondary)]">
-          PNG, JPG or WebP. Maximum 2 MB.
+          {t("PNG, JPG or WebP. Maximum 2 MB.")}
         </p>
       </div>
     </div>
@@ -249,7 +253,7 @@ if (companyLogo && data.user) {
 
 <div>
   <label className="mb-2 block text-sm font-medium">
-    Industry
+    {t("Industry")}
   </label>
   <select
     className={inputClass}
@@ -257,30 +261,30 @@ if (companyLogo && data.user) {
                   onChange={(event) => setIndustry(event.target.value)}
                 >
                   {industries.map((item) => (
-                    <option key={item}>{item}</option>
+                    <option key={item} value={item}>{t(item)}</option>
                   ))}
                 </select>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Company size
+                  {t("Company size")}
                 </label>
                 <select
                   className={inputClass}
                   value={size}
                   onChange={(event) => setSize(event.target.value)}
                 >
-                  <option value="1-10">1–10 employees</option>
-                  <option value="11-50">11–50 employees</option>
-                  <option value="51-200">51–200 employees</option>
-                  <option value="201+">201+ employees</option>
+                  <option value="1-10">{t("1–10 employees")}</option>
+                  <option value="11-50">{t("11–50 employees")}</option>
+                  <option value="51-200">{t("51–200 employees")}</option>
+                  <option value="201+">{t("201+ employees")}</option>
                 </select>
               </div>
 
               <div>
                 <label className="mb-3 block text-sm font-medium">
-                  Your role
+                  {t("Your role")}
                 </label>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -299,11 +303,11 @@ if (companyLogo && data.user) {
                       }`}
                     >
                       <Icon className="mb-4 text-[var(--primary)]" size={24} />
-                      <span className="block font-semibold">{value}</span>
+                      <span className="block font-semibold">{t(value)}</span>
                       <span className="mt-1 block text-xs text-[var(--text-secondary)]">
                         {value === "Owner"
-                          ? "Business administrator"
-                          : "Invited team member"}
+                          ? t("Business administrator")
+                          : t("Invited team member")}
                       </span>
                     </button>
                   ))}
@@ -311,7 +315,7 @@ if (companyLogo && data.user) {
 
                 {role === "Manager" && (
                   <p className="mt-3 text-xs leading-5 text-[var(--text-secondary)]">
-                    Managers will join an existing company through a verified invitation.
+                    {t("Managers will join an existing company through a verified invitation.")}
                   </p>
                 )}
               </div>
@@ -322,15 +326,15 @@ if (companyLogo && data.user) {
             <div className="space-y-6">
               <div>
                 <h2 className="text-3xl font-semibold">
-                  Your account details.
+                  {t("Your account details.")}
                 </h2>
                 <p className="mt-3 text-sm text-[var(--text-secondary)]">
-                  Set up your professional WJRFIN account.
+                  {t("Set up your professional WJRFIN account.")}
                 </p>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm">Full name</label>
+                <label className="mb-2 block text-sm">{t("Full name")}</label>
                 <input
                   className={inputClass}
                   value={name}
@@ -340,7 +344,7 @@ if (companyLogo && data.user) {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm">Work email</label>
+                <label className="mb-2 block text-sm">{t("Work email")}</label>
                 <input
                   type="email"
                   className={inputClass}
@@ -351,7 +355,7 @@ if (companyLogo && data.user) {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm">Password</label>
+                <label className="mb-2 block text-sm">{t("Password")}</label>
                 <input
                   type="password"
                   className={inputClass}
@@ -363,7 +367,7 @@ if (companyLogo && data.user) {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm">Confirm password</label>
+                <label className="mb-2 block text-sm">{t("Confirm password")}</label>
                 <input
                   type="password"
                   className={inputClass}
@@ -375,7 +379,7 @@ if (companyLogo && data.user) {
 
               {confirmPassword && password !== confirmPassword && (
                 <p className="text-sm text-red-600">
-                  Passwords do not match.
+                  {t("Passwords do not match.")}
                 </p>
               )}
             </div>
@@ -389,52 +393,52 @@ if (companyLogo && data.user) {
                   size={32}
                 />
                 <h2 className="text-3xl font-semibold">
-                  Your workspace is almost ready.
+                  {t("Your workspace is almost ready.")}
                 </h2>
                 <p className="mt-3 text-sm text-[var(--text-secondary)]">
-                  Review your preferences before creating your account.
+                  {t("Review your preferences before creating your account.")}
                 </p>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Primary currency
+                  {t("Primary currency")}
                 </label>
                 <select
                   className={inputClass}
                   value={currency}
                   onChange={(event) => setCurrency(event.target.value)}
                 >
-                  <option value="USD">USD — US Dollar</option>
-                  <option value="BRL">BRL — Brazilian Real</option>
-                  <option value="EUR">EUR — Euro</option>
-                  <option value="GBP">GBP — British Pound</option>
-                  <option value="PYG">PYG — Paraguayan Guaraní</option>
+                  <option value="USD">{t("USD — US Dollar")}</option>
+                  <option value="BRL">{t("BRL — Brazilian Real")}</option>
+                  <option value="EUR">{t("EUR — Euro")}</option>
+                  <option value="GBP">{t("GBP — British Pound")}</option>
+                  <option value="PYG">{t("PYG — Paraguayan Guaraní")}</option>
                 </select>
               </div>
 
               <div className="space-y-3 rounded-2xl bg-[var(--background)] p-5 text-sm">
                 <div className="flex justify-between gap-4">
-                  <span className="text-[var(--text-secondary)]">Company</span>
+                  <span className="text-[var(--text-secondary)]">{t("Company")}</span>
                   <strong>{company}</strong>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[var(--text-secondary)]">Role</span>
-                  <strong>{role}</strong>
+                  <span className="text-[var(--text-secondary)]">{t("Role")}</span>
+                  <strong>{t(role)}</strong>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[var(--text-secondary)]">Email</span>
+                  <span className="text-[var(--text-secondary)]">{t("Email")}</span>
                   <strong className="break-all text-right">{email}</strong>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[var(--text-secondary)]">Currency</span>
+                  <span className="text-[var(--text-secondary)]">{t("Currency")}</span>
                   <strong>{currency}</strong>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                 <Check size={16} />
-                Your information will be protected by workspace permissions.
+                {t("Your information will be protected by workspace permissions.")}
               </div>
             </div>
           )}
@@ -459,7 +463,7 @@ if (companyLogo && data.user) {
               className="flex items-center gap-2 text-sm disabled:opacity-30"
             >
               <ArrowLeft size={17} />
-              Back
+              {t("Back")}
             </button>
 
             {step < 3 ? (
@@ -469,7 +473,7 @@ if (companyLogo && data.user) {
                 disabled={!canContinue}
                 className="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 font-medium text-white disabled:opacity-40"
               >
-                Continue
+                {t("Continue")}
                 <ArrowRight size={17} />
               </button>
             ) : (
@@ -480,7 +484,7 @@ if (companyLogo && data.user) {
   disabled={loading || role !== "Owner"}
   className="rounded-xl bg-[var(--primary)] px-6 py-3 font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 >
-  {loading ? "Creating account..." : "Create workspace"}
+  {loading ? t("Creating account...") : t("Create workspace")}
 </button>
 
             )}
@@ -488,7 +492,7 @@ if (companyLogo && data.user) {
         </div>
 
         <p className="mt-7 text-center text-xs text-[var(--text-secondary)]">
-          WJRFIN — Business Financial Intelligence
+          {t("WJRFIN — Business Financial Intelligence")}
         </p>
       </div>
     </main>
