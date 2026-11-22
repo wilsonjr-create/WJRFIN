@@ -29,6 +29,9 @@ import {
   Crown,
   Menu,
   X,
+  UserRound,
+  Building2,
+  LogOut,
 } from "lucide-react";
 import {
   BarChart,
@@ -80,6 +83,13 @@ const navigationTranslations = {
   },
 };
 
+const profileTranslations = {
+  en: { profile: "My Profile", company: "My Company", settings: "Settings", logout: "Sign out", account: "Account", companyDetails: "Company information", email: "Email", name: "Name", currency: "Primary currency", loading: "Loading...", error: "Unable to sign out. Please try again." },
+  es: { profile: "Mi perfil", company: "Mi empresa", settings: "Configuración", logout: "Cerrar sesión", account: "Cuenta", companyDetails: "Información de la empresa", email: "Correo electrónico", name: "Nombre", currency: "Moneda principal", loading: "Cargando...", error: "No se pudo cerrar sesión. Inténtalo de nuevo." },
+  "pt-BR": { profile: "Meu perfil", company: "Minha empresa", settings: "Configurações", logout: "Sair", account: "Conta", companyDetails: "Informações da empresa", email: "E-mail", name: "Nome", currency: "Moeda principal", loading: "Carregando...", error: "Não foi possível sair. Tente novamente." },
+  "pt-PT": { profile: "O meu perfil", company: "A minha empresa", settings: "Definições", logout: "Terminar sessão", account: "Conta", companyDetails: "Informações da empresa", email: "E-mail", name: "Nome", currency: "Moeda principal", loading: "A carregar...", error: "Não foi possível terminar a sessão. Tente novamente." },
+} as const;
+
 const navigation = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "Transactions", icon: ArrowLeftRight },
@@ -106,6 +116,12 @@ export default function Home() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [logoutError, setLogoutError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
+  const profileLabels = profileTranslations[language];
 
   const [companyName, setCompanyName] = useState("Loading...");
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
@@ -134,7 +150,11 @@ export default function Home() {
       } = await supabase.auth.getUser();
 
       if (cancelled) return;
-
+      if (user) {
+        setAccountEmail(user.email ?? "");
+        const displayName = user.user_metadata?.full_name ?? user.user_metadata?.name;
+        setAccountName(typeof displayName === "string" ? displayName : "");
+      }
 
 if (authError || !user) {
   setCompanyId(null);
@@ -510,8 +530,52 @@ const realMetrics = [
 
               <Bell size={19} className="text-[var(--text-secondary)]" />
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-white">
-                WJ
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label={profileLabels.account}
+                  aria-expanded={profileMenuOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setProfileMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-full border border-[var(--border)] p-1 pr-2 hover:bg-[var(--primary-soft)]"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-white">
+                    {(accountName || accountEmail || "WJ").slice(0, 2).toUpperCase()}
+                  </span>
+                  <ChevronDown size={15} className="text-[var(--text-secondary)]" />
+                </button>
+                {profileMenuOpen && (
+                  <>
+                    <button type="button" aria-label="Close profile menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileMenuOpen(false)} />
+                    <div role="menu" className="absolute right-0 top-full z-50 mt-3 w-64 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-xl">
+                      <div className="border-b border-[var(--border)] px-3 py-3">
+                        <p className="truncate text-sm font-semibold">{accountName || profileLabels.account}</p>
+                        <p className="truncate text-xs text-[var(--text-secondary)]">{accountEmail}</p>
+                      </div>
+                      {([
+                        { label: profileLabels.profile, page: "Profile", icon: UserRound },
+                        { label: profileLabels.company, page: "Company", icon: Building2 },
+                        { label: profileLabels.settings, page: "Settings", icon: Settings },
+                      ] as const).map(({ label, page, icon: Icon }) => (
+                        <button key={page} type="button" role="menuitem" onClick={() => { setActivePage(page); setProfileMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-[var(--primary-soft)]">
+                          <Icon size={17} />{label}
+                        </button>
+                      ))}
+                      <div className="mt-1 border-t border-[var(--border)] pt-1">
+                        <button type="button" role="menuitem" disabled={signingOut} onClick={async () => {
+                          setSigningOut(true);
+                          setLogoutError("");
+                          const { error } = await createClient().auth.signOut();
+                          if (error) { setLogoutError(profileLabels.error); setSigningOut(false); return; }
+                          window.location.assign("/login");
+                        }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-[var(--primary-soft)] disabled:opacity-50">
+                          <LogOut size={17} />{profileLabels.logout}
+                        </button>
+                        {logoutError && <p role="alert" className="px-3 py-2 text-xs text-red-600">{logoutError}</p>}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </header>
@@ -768,6 +832,24 @@ const realMetrics = [
                   </div>
                 </section>
               </>
+            ) : activePage === "Profile" ? (
+              <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+                <h2 className="mb-6 text-2xl font-bold">{profileLabels.profile}</h2>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div><p className="text-xs text-[var(--text-secondary)]">{profileLabels.name}</p><p className="mt-1 font-medium">{accountName || "—"}</p></div>
+                  <div><p className="text-xs text-[var(--text-secondary)]">{profileLabels.email}</p><p className="mt-1 break-all font-medium">{accountEmail || "—"}</p></div>
+                </div>
+              </section>
+            ) : activePage === "Company" ? (
+              <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+                <h2 className="mb-6 text-2xl font-bold">{profileLabels.company}</h2>
+                {companyError ? <p role="alert" className="text-sm text-red-600">{companyError}</p> : (
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div><p className="text-xs text-[var(--text-secondary)]">{profileLabels.name}</p><p className="mt-1 font-medium">{companyName}</p></div>
+                    <div><p className="text-xs text-[var(--text-secondary)]">{profileLabels.currency}</p><p className="mt-1 font-medium">{companyCurrency}</p></div>
+                  </div>
+                )}
+              </section>
             ) : activePage === "Transactions" ? (
   <TransactionsPage
   companyId={companyId}
