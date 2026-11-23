@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import LandingSections from "@/components/landing/LandingSections";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ArrowRight,
@@ -151,7 +152,7 @@ export default function HomePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#101215] text-[#F7F5F1]">
+    <main className="min-h-screen scroll-smooth bg-[#101215] text-[#F7F5F1]">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#15171A]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-6 py-5">
           <a href="#home" className="shrink-0">
@@ -379,7 +380,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-            {/* FOOTER */}
+            <LandingSections />
+
+      {/* FOOTER */}
       <footer className="border-t border-[#B48B4E]/25 bg-[#101215] px-6 py-6">
         <div className="mx-auto flex max-w-7xl items-center justify-center">
           <p className="text-center text-xs tracking-widest text-white/45">

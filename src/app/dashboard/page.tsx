@@ -114,6 +114,14 @@ const navigation = [
   amount: number;
   date: string;
 };
+type UserCompany = {
+  id: string;
+  name: string;
+  primary_currency: string;
+  logo_path: string | null;
+  role: string;
+};
+
 export default function Home() {
   const router = useRouter();
   const { language } = useLanguage();
@@ -134,7 +142,47 @@ export default function Home() {
   const [isCompanyOwner, setIsCompanyOwner] = useState(false);
   const [companyError, setCompanyError] = useState("");
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [availableCompanies, setAvailableCompanies] = useState<UserCompany[]>([]);
   const [companyCurrency, setCompanyCurrency] = useState("USD");
+
+  async function switchCompany(nextCompanyId: string) {
+    const selected = availableCompanies.find(
+      (company) => company.id === nextCompanyId
+    );
+
+    if (!selected || selected.id === companyId) return;
+
+    setCompanyError("");
+    setCompanyId(null);
+    setFinancialTransactions([]);
+    setTransactionsLoading(true);
+
+    setCompanyName(selected.name);
+    setCompanyCurrency(selected.primary_currency);
+    setCompanyLogoPath(selected.logo_path);
+    setCompanyLogoUrl(null);
+    setIsCompanyOwner(selected.role.toLowerCase() === "owner");
+
+    if (selected.logo_path) {
+      const supabase = createClient();
+
+      const { data, error } = await supabase.storage
+        .from("company-logos")
+        .createSignedUrl(selected.logo_path, 3600);
+
+      setCompanyLogoUrl(error ? null : data?.signedUrl ?? null);
+    }
+
+    setCompanyId(selected.id);
+
+    const { data: { user } } = await createClient().auth.getUser();
+    if (user) {
+      localStorage.setItem(
+        `wjrfin-active-company-${user.id}`,
+        selected.id
+      );
+    }
+  }
   const [financialTransactions, setFinancialTransactions] =
   useState<FinancialTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
@@ -171,23 +219,62 @@ if (authError || !user) {
 }
 
 
-      const { data: membership, error: membershipError } =
+      const { data: memberships, error: membershipError } =
         await supabase
           .from("company_members")
           .select("company_id, role")
           .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
+          .order("company_id");
 
       if (cancelled) return;
 
-     if (membershipError || !membership) {
+     if (membershipError || !memberships?.length) {
   setCompanyId(null);
   setIsCompanyOwner(false);
   setCompanyError("No company found for this account.");
   setCompanyName("Company unavailable");
   return;
 }
+
+      const savedCompanyId = localStorage.getItem(
+        `wjrfin-active-company-${user.id}`
+      );
+
+      const membership =
+        memberships.find(
+          (item) => item.company_id === savedCompanyId
+        ) ?? memberships[0];
+
+      const { data: companies, error: companiesError } =
+        await supabase
+          .from("companies")
+          .select("id, name, logo_path, primary_currency")
+          .in("id", memberships.map((item) => item.company_id));
+
+      if (cancelled) return;
+
+      if (companiesError) {
+        setCompanyError("Unable to load companies.");
+        return;
+      }
+
+      const companyList: UserCompany[] = (companies ?? []).flatMap((item) => {
+        const member = memberships.find(
+          (entry) => entry.company_id === item.id
+        );
+
+        return member
+          ? [{
+              id: item.id,
+              name: item.name,
+              logo_path: item.logo_path,
+              primary_currency: item.primary_currency,
+              role: member.role,
+            }]
+          : [];
+      });
+
+      setAvailableCompanies(companyList);
 
       const { data: company, error: companyFetchError } =
         await supabase
@@ -465,6 +552,51 @@ const realMetrics = [
               aria-label="Close menu"
             >
               <X size={20} />
+            </button>
+          </div>
+
+          {/* Company workspace selector */}
+          <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--primary-soft)] p-3">
+            <div className="mb-2 flex items-center gap-2 px-2">
+              <Building2 size={14} className="text-[var(--primary)]" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
+                {language === "es" ? "Espacio de trabajo" : language === "pt-BR" ? "Área de trabalho" : language === "pt-PT" ? "Espaço de trabalho" : "Workspace"}
+              </span>
+            </div>
+
+            <select
+              aria-label="Select company workspace"
+              value={companyId ?? ""}
+              disabled={availableCompanies.length <= 1}
+              onChange={(event) => { void switchCompany(event.target.value); }}
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--sidebar)] px-3 py-3 text-sm font-medium text-[var(--text-primary)] outline-none focus:border-[var(--primary)] disabled:cursor-default"
+            >
+              {availableCompanies.length === 0 && (
+                <option value="">Loading...</option>
+              )}
+              {availableCompanies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSidebarOpen(false);
+                window.location.assign("/dashboard/new-company");
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--sidebar)]"
+            >
+              <span className="text-lg leading-none">+</span>
+              {language === "es"
+                ? "Añadir empresa"
+                : language === "pt-BR"
+                  ? "Adicionar empresa"
+                  : language === "pt-PT"
+                    ? "Adicionar empresa"
+                    : "Add company"}
             </button>
           </div>
 
@@ -861,20 +993,21 @@ const realMetrics = [
               </section>
             ) : activePage === "Transactions" ? (
   <TransactionsPage
+  key={companyId ?? "none"}
   companyId={companyId}
   companyCurrency={companyCurrency}
 />
 ) : activePage === "Cash Flow" ? (
   <CashFlowPage transactions={financialTransactions} companyCurrency={companyCurrency} loading={transactionsLoading} error={transactionsError} />
 ) : activePage === "Bills" ? (
-  <BillsPage companyId={companyId} companyCurrency={companyCurrency} />
+  <BillsPage key={companyId ?? "none"} companyId={companyId} companyCurrency={companyCurrency} />
 ) : activePage === "Reports" ? (
   <ReportsPage transactions={financialTransactions} companyCurrency={companyCurrency} loading={transactionsLoading} error={transactionsError} />
 ) : activePage === "Contacts" ? (
-  <ContactsPage companyId={companyId} />
+  <ContactsPage key={companyId ?? "none"} companyId={companyId} />
 ) : activePage === "Settings" || activePage === "Configurações" ? (
   <div className="space-y-6">
-    <CompanyLogoSettings companyId={companyId} logoPath={companyLogoPath} logoUrl={companyLogoUrl} isOwner={isCompanyOwner} onLogoChange={(path, url) => { setCompanyLogoPath(path); setCompanyLogoUrl(url); }} />
+    <CompanyLogoSettings key={companyId ?? "none"} companyId={companyId} logoPath={companyLogoPath} logoUrl={companyLogoUrl} isOwner={isCompanyOwner} onLogoChange={(path, url) => { setCompanyLogoPath(path); setCompanyLogoUrl(url); }} />
     <ThemeSelector />
   </div>
 ) : (
