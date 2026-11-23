@@ -185,6 +185,8 @@ export default function Home() {
   }
   const [financialTransactions, setFinancialTransactions] =
   useState<FinancialTransaction[]>([]);
+
+  const [transactionsVersion, setTransactionsVersion] = useState(0);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [transactionsError, setTransactionsError] = useState("");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
@@ -367,7 +369,7 @@ useEffect(() => {
   return () => {
     cancelled = true;
   };
-}, [companyId]);
+}, [companyId, transactionsVersion]);
 const totalRevenue = financialTransactions
   .filter((transaction) => transaction.type === "Income")
   .reduce((total, transaction) => total + transaction.amount, 0);
@@ -996,6 +998,7 @@ const realMetrics = [
   key={companyId ?? "none"}
   companyId={companyId}
   companyCurrency={companyCurrency}
+  onTransactionsChange={() => setTransactionsVersion((version) => version + 1)}
 />
 ) : activePage === "Cash Flow" ? (
   <CashFlowPage transactions={financialTransactions} companyCurrency={companyCurrency} loading={transactionsLoading} error={transactionsError} />

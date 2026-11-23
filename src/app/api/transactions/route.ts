@@ -118,7 +118,10 @@ export async function POST(request: NextRequest) {
       typeof amount !== "number" ||
       !Number.isFinite(amount) ||
       amount <= 0 ||
-      !Number.isInteger(amount * 100) ||
+      (
+        !Number.isSafeInteger(Math.round(amount * 100)) ||
+        Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-7
+      ) ||
       typeof originalCurrency !== "string" ||
       !["BRL", "USD", "EUR", "CNY"].includes(originalCurrency) ||
       typeof date !== "string" ||

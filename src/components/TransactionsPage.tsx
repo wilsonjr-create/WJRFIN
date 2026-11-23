@@ -52,9 +52,11 @@ const categories = [
 export default function TransactionsPage({
   companyId,
   companyCurrency,
+  onTransactionsChange,
 }: {
   companyId: string | null;
   companyCurrency: string;
+  onTransactionsChange?: () => void;
 }) {
   const { language } = useLanguage();
   const t = (key: string) => translate(language, key);
@@ -69,6 +71,8 @@ export default function TransactionsPage({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
 
   const [type, setType] = useState<TransactionType>("Income");
   const [description, setDescription] = useState("");
@@ -100,6 +104,28 @@ export default function TransactionsPage({
     if (!supportedCurrencies.some((item) => item === target)) {
       setConverting(false);
       setConversionError("Unsupported currency.");
+      return;
+    }
+
+    const previousAmount =
+      editingTransaction?.original_amount ?? editingTransaction?.amount;
+    const previousCurrency =
+      editingTransaction?.original_currency ?? companyCurrency;
+
+    if (
+      editingTransaction &&
+      numericAmount === previousAmount &&
+      originalCurrency === previousCurrency.toUpperCase()
+    ) {
+      setConversion({
+        originalAmount: numericAmount,
+        originalCurrency,
+        convertedAmount: editingTransaction.amount,
+        targetCurrency: target as SupportedCurrency,
+        exchangeRate: editingTransaction.exchange_rate ?? 1,
+        exchangeRateDate: editingTransaction.exchange_rate_date,
+      });
+      setConverting(false);
       return;
     }
 
@@ -135,7 +161,7 @@ export default function TransactionsPage({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [modalOpen, amount, originalCurrency, companyCurrency]);
+  }, [modalOpen, amount, originalCurrency, companyCurrency, editingTransaction]);
 
 async function fetchCompanyTransactions() {
   if (!companyId) {
@@ -234,6 +260,7 @@ useEffect(() => {
 
   function openNewModal(nextType: TransactionType) {
     setEditingId(null);
+    setEditingTransaction(null);
     setType(nextType);
     setDescription("");
     setCategory(nextType === "Income" ? "Services" : "Facilities");
@@ -250,6 +277,7 @@ useEffect(() => {
 
   function openEditModal(item: Transaction) {
     setEditingId(item.id);
+    setEditingTransaction(item);
     setType(item.type);
     setDescription(item.description);
     setCategory(item.category);
@@ -326,6 +354,7 @@ async function saveTransaction(
     }
 
     await fetchCompanyTransactions();
+    onTransactionsChange?.();
 
     setModalOpen(false);
     setEditingId(null);
@@ -351,6 +380,7 @@ async function saveTransaction(
       return;
     }
     await fetchCompanyTransactions();
+    onTransactionsChange?.();
   }
 
   return (
@@ -512,6 +542,18 @@ async function saveTransaction(
                   >
                     {item.type === "Income" ? "+" : "−"}
                     {money(item.amount)}
+                    {item.original_amount != null &&
+                      item.original_currency &&
+                      item.original_currency !== companyCurrency && (
+                        <div className="mt-1 text-xs font-normal text-[var(--text-secondary)]">
+                          {t("Original Amount")}:{" "}
+                          {currency(
+                            item.original_amount,
+                            item.original_currency,
+                            locales[language]
+                          )}
+                        </div>
+                      )}
                   </td>
 
                   <td className="px-6 py-4">
@@ -628,7 +670,7 @@ async function saveTransaction(
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-xs font-semibold">
-                   {t("Amount")} ({companyCurrency})
+                   {t("Original Amount")} ({originalCurrency})
                   </label>
 
                   <input
