@@ -4,10 +4,12 @@ import { createServerClient } from "@supabase/ssr";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
+  const appUrl = process.env.APP_URL?.replace(/\/$/, "");
+  const origin = appUrl || url.origin;
   const code = url.searchParams.get("code");
 
   let response = NextResponse.redirect(
-    new URL("/login?error=missing_code", url.origin)
+    new URL("/login?error=missing_code", origin)
   );
 
   if (!code) {
@@ -15,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   response = NextResponse.redirect(
-  new URL("/login?confirmed=true", url.origin)
+  new URL("/login?confirmed=true", origin)
 );
 
   const supabase = createServerClient(
@@ -44,9 +46,38 @@ export async function GET(request: NextRequest) {
       "Location",
       new URL(
         "/login?error=confirmation_failed",
-        url.origin
+        origin
       ).toString()
     );
+  }
+
+  if (!error && url.searchParams.get("flow") === "google") {
+    const { data: { user }, error: userError } =
+      await supabase.auth.getUser();
+
+    if (!userError && user) {
+      const { data: memberships, error: membershipError } =
+        await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .limit(1);
+
+      if (membershipError) {
+        response.headers.set(
+          "Location",
+          new URL("/login?error=company_check_failed", origin).toString()
+        );
+      } else {
+        response.headers.set(
+          "Location",
+          new URL(
+            memberships?.length ? "/dashboard" : "/dashboard/new-company",
+            origin
+          ).toString()
+        );
+      }
+    }
   }
 
   return response;
