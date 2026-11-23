@@ -1,6 +1,15 @@
 import type { Language } from "@/contexts/LanguageContext";
 
 const messages: Record<string, [string, string, string, string]> = {
+  "Original Amount": ["Original Amount", "Valor original", "Valor original", "Importe original"],
+  "Original Currency": ["Original Currency", "Moeda original", "Moeda original", "Moneda original"],
+  "Exchange Rate": ["Exchange Rate", "Taxa de câmbio", "Taxa de câmbio", "Tipo de cambio"],
+  "Converted Amount": ["Converted Amount", "Valor convertido", "Valor convertido", "Importe convertido"],
+  "Exchange Rate Date": ["Exchange Rate Date", "Data da cotação", "Data da taxa de câmbio", "Fecha de cotización"],
+  "Converting...": ["Converting...", "Convertendo...", "A converter...", "Convirtiendo..."],
+  "Exchange rates unavailable.": ["Exchange rates unavailable.", "Cotações indisponíveis.", "Taxas de câmbio indisponíveis.", "Tipos de cambio no disponibles."],
+  "CNY — Chinese Yuan": ["CNY — Chinese Yuan", "CNY — Yuan chinês", "CNY — Yuan chinês", "CNY — Yuan chino"],
+
   "Create your workspace.": ["Create your workspace.", "Crie seu espaço de trabalho.", "Crie o seu espaço de trabalho.", "Crea tu espacio de trabajo."],
   "Tell us about your business to personalize your experience.": ["Tell us about your business to personalize your experience.", "Conte sobre sua empresa para personalizarmos sua experiência.", "Fale-nos da sua empresa para personalizarmos a sua experiência.", "Cuéntanos sobre tu empresa para personalizar tu experiencia."],
   "Company name": ["Company name", "Nome da empresa", "Nome da empresa", "Nombre de la empresa"],

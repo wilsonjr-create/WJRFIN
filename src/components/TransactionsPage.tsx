@@ -6,6 +6,12 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  convertCurrency,
+  supportedCurrencies,
+  type SupportedCurrency,
+  type ConversionResult,
+} from "@/lib/exchange";
+import {
   ArrowDownLeft,
   ArrowUpRight,
   Check,
@@ -24,6 +30,10 @@ type Transaction = {
   category: string;
   type: TransactionType;
   amount: number;
+  original_amount: number | null;
+  original_currency: string | null;
+  exchange_rate: number | null;
+  exchange_rate_date: string | null;
   date: string;
 };
 
@@ -64,7 +74,68 @@ export default function TransactionsPage({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Services");
   const [amount, setAmount] = useState("");
+  const [originalCurrency, setOriginalCurrency] =
+    useState<SupportedCurrency>("BRL");
+  const [conversion, setConversion] =
+    useState<ConversionResult | null>(null);
+  const [converting, setConverting] = useState(false);
+  const [conversionError, setConversionError] = useState("");
+
   const [date, setDate] = useState("");
+
+  useEffect(() => {
+    if (!modalOpen) return;
+
+    const numericAmount = Number(amount);
+    const target = companyCurrency.toUpperCase();
+
+    setConversion(null);
+    setConversionError("");
+
+    if (!amount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setConverting(false);
+      return;
+    }
+
+    if (!supportedCurrencies.some((item) => item === target)) {
+      setConverting(false);
+      setConversionError("Unsupported currency.");
+      return;
+    }
+
+    let cancelled = false;
+    setConverting(true);
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const result = await convertCurrency(
+          numericAmount,
+          originalCurrency,
+          target as SupportedCurrency
+        );
+
+        if (!cancelled) {
+          setConversion(result);
+          setConversionError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setConversionError(
+            error instanceof Error
+              ? error.message
+              : "Exchange rates unavailable."
+          );
+        }
+      } finally {
+        if (!cancelled) setConverting(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [modalOpen, amount, originalCurrency, companyCurrency]);
 
 async function fetchCompanyTransactions() {
   if (!companyId) {
@@ -80,7 +151,7 @@ async function fetchCompanyTransactions() {
 
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, description, category, type, amount, date")
+      .select("id, description, category, type, amount, original_amount, original_currency, exchange_rate, exchange_rate_date, date")
       .eq("company_id", companyId)
       .order("date", { ascending: false });
 
@@ -96,6 +167,12 @@ const companyTransactions: Transaction[] = (data ?? []).map(
     category: item.category,
     type: item.type as TransactionType,
     amount: Number(item.amount),
+    original_amount:
+      item.original_amount == null ? null : Number(item.original_amount),
+    original_currency: item.original_currency,
+    exchange_rate:
+      item.exchange_rate == null ? null : Number(item.exchange_rate),
+    exchange_rate_date: item.exchange_rate_date,
     date: item.date,
   })
 );
@@ -161,6 +238,12 @@ useEffect(() => {
     setDescription("");
     setCategory(nextType === "Income" ? "Services" : "Facilities");
     setAmount("");
+    const defaultCurrency = companyCurrency.toUpperCase();
+    setOriginalCurrency(
+      supportedCurrencies.find((code) => code === defaultCurrency) ?? "BRL"
+    );
+    setConversion(null);
+    setConversionError("");
     setDate(new Date().toLocaleDateString("en-CA"));
     setModalOpen(true);
   }
@@ -170,7 +253,19 @@ useEffect(() => {
     setType(item.type);
     setDescription(item.description);
     setCategory(item.category);
-    setAmount(String(item.amount));
+    setAmount(String(item.original_amount ?? item.amount));
+
+    const savedCurrency =
+      item.original_currency ?? companyCurrency;
+
+    setOriginalCurrency(
+      supportedCurrencies.find(
+        (code) => code === savedCurrency.toUpperCase()
+      ) ?? "BRL"
+    );
+
+    setConversion(null);
+    setConversionError("");
     setDate(item.date);
     setModalOpen(true);
   }
@@ -205,46 +300,29 @@ async function saveTransaction(
   setSavingTransaction(true);
 
   try {
-    const supabase = createClient();
+    const response = await fetch("/api/transactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        companyId,
+        transactionId: editingId,
+        description: description.trim(),
+        category,
+        type,
+        amount: numericAmount,
+        originalCurrency,
+        date,
+      }),
+    });
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const result = await response.json();
 
-    if (authError || !user) {
-      throw new Error("Please sign in to save transactions.");
-    }
-
-    const values = {
-      description: description.trim(),
-      category,
-      type,
-      amount: numericAmount,
-      date,
-    };
-
-    if (editingId) {
-      const { data, error } = await supabase
-        .from("transactions")
-        .update(values)
-        .eq("id", editingId)
-        .eq("company_id", companyId)
-        .select("id")
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new Error("Transaction not updated.");
-    } else {
-      const { error } = await supabase
-        .from("transactions")
-        .insert({
-          ...values,
-          company_id: companyId,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
+    if (!response.ok) {
+      throw new Error(
+        result.error ?? "Unable to save transaction."
+      );
     }
 
     await fetchCompanyTransactions();
@@ -583,6 +661,57 @@ async function saveTransaction(
                   />
                 </div>
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold">
+                    {t("Original Currency")}
+                  </label>
+                  <select
+                    value={originalCurrency}
+                    onChange={(event) =>
+                      setOriginalCurrency(
+                        event.target.value as SupportedCurrency
+                      )
+                    }
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm outline-none"
+                  >
+                    {supportedCurrencies.map((code) => (
+                      <option key={code} value={code}>
+                        {code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    {t("Converted Amount")} ({companyCurrency})
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {converting
+                      ? t("Converting...")
+                      : conversion
+                        ? money(conversion.convertedAmount)
+                        : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {conversion && (
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {t("Exchange Rate")}: 1 {originalCurrency} ={" "}
+                  {conversion.exchangeRate.toFixed(6)} {companyCurrency}
+                  {conversion.exchangeRateDate &&
+                    ` · ${t("Exchange Rate Date")}: ${conversion.exchangeRateDate}`}
+                </p>
+              )}
+
+              {conversionError && (
+                <p role="alert" className="text-xs text-red-500">
+                  {t(conversionError)}
+                </p>
+              )}
 
               <div>
                 <label className="mb-2 block text-xs font-semibold">
