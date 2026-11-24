@@ -253,7 +253,7 @@ WJRFIN was developed as a portfolio project to demonstrate:
 
 Junior Software Engineer | Junior Full-Stack Developer
 
-Bachelor's Degree in Software Engineering
+Bachelor's Degree in Information Systems
 
 [GitHub](https://github.com/wilsonjr-create) · [Portfolio](https://wilsonjrdev-portfolio.vercel.app/)
 
